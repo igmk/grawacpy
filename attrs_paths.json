@@ -1,25 +1,25 @@
 { 
     "global":
-    {"mission":"IOP4H2O",
-    "platform":"AWIPEV",
-     "yyyy":"2025",
-     "mm":"02",
-     "dd":"06",
+    {"mission":"yourmissionname",
+    "platform":"station",
+     "yyyy":"yyyy",
+     "mm":"mm",
+     "dd":"dd",
      "allday":"1",
      "hour":"18",
      "version":"v1.0",
      "quicklooks":0
     },
     "paths":
- { "mirac":"/home/sabrina/home_igmk/gband/science/data_for_grawacpy/iop4h2o/wband/",
-   "grawac":"/home/sabrina/home_igmk/gband/science/data_for_grawacpy/iop4h2o/gband/",
-   "attenuation":"/home/sabrina/home_igmk/gband/science/data_for_grawacpy/iop4h2o/attenuation/",
-   "lut":"/home/sabrina/home_igmk/gband/science/iop4h2o/lut_kappa.nc",
-   "thermo":"/home/sabrina/home_igmk/gband/science/iop4h2o/radiosondes/rs_iop4h2o.nc",
+ { "mirac":"yourpathtowband",
+   "grawac":"yourpathtogband",
+   "attenuation":"yourpathtoattenuation/",
+   "lut":"filename_lookup_table_kappa_with_full_path",
+   "thermo":"filename_thermocolumns_input_with_full_path",
    "gps":"",
    "miracchirpprogram":"P01",
    "grawacchirpprogram":"P02",
-   "output":"../grawacpyoutput/"
+   "output":"yourpathtooutput"
    },
    "watervaporsettings":
 {   "R":"250",
