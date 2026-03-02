@@ -2,3 +2,6 @@
 __pycache__
 *checkpoint.py
 .ipynb_checkpoints
+
+*.json
+
