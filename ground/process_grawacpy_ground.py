@@ -33,9 +33,13 @@ if len(sys.argv) > 1:
     tt = sys.argv[6] #tavg
     
 else: #specify through info json file:
+    with open("./config_iop4h2o.json") as json_file:
+        info = json.load(json_file)
     yyyy = info['global']['yyyy']
     mm = info['global']['mm']
     dd = info['global']['dd']
+    rr = info['watervaporsettings']['R']
+    tt = info['watervaporsettings']['tavg']
     
 info['yyyy'] = yyyy
 info['mm'] = mm
@@ -49,16 +53,20 @@ info['watervaporsettings']['tavg'] = '%ss'%tt
 print('processing %s, %s%s%s with water vapor retrieval on R=%sm and tavg=%s'%(info['global']['mission'], yyyy, mm, dd, info['watervaporsettings']['R'], info['watervaporsettings']['tavg']))
 
 print('loading Gband files....')
-gdatafiles = sorted(glob.glob(info['paths']['grawac'] +'%s/%s/%s/'%(yyyy,mm,dd) +'grawac_%s%s%s_*_%s_ZEN.lv1.NC'%(yyyy, mm, dd, info['paths']['grawacchirpprogram'])))
-print(gdatafiles)
+#gdatafiles = sorted(glob.glob(info['paths']['grawac'] +'%s/%s/%s/'%(yyyy,mm,dd) +'grawac_%s%s%s_*_%s_ZEN.lv1.NC'%(yyyy, mm, dd, info['paths']['grawacchirpprogram'])))
+gdatafiles  = sorted(glob.glob(info['paths']['grawac']+'%s/%s/%s/'%(yyyy,mm,dd) + 'grawac_nya_lv1a_%s%s%s*_%s.nc'%(yyyy, mm, dd, info['paths']['grawacchirpprogram'])))
+ghkfiles = sorted(glob.glob(info['paths']['grawac']+'%s/%s/%s/'%(yyyy,mm,dd) + 'grawac_nya_housekeep_lv1a_%s%s%s*_%s.nc'%(yyyy, mm, dd, info['paths']['grawacchirpprogram'])))
+#print(gdatafiles)
 
-grawacl0data = importfct.read_rpg_lv1(gdatafiles, info, 'GRaWAC', instrumentaltinput = 15, withdar=True, write=True)
+#grawacl0data = importfct.read_rpg_lv1(gdatafiles, info, 'GRaWAC', instrumentaltinput = 15, withdar=True, write=True)
+grawacl0data = importfct.read_compactfiles(gdatafiles, ghkfiles, info, 'GRaWAC', withdar=True, write=True)
 
 print('loading Wband files....')
-wdatafiles  = sorted(glob.glob(info['paths']['mirac']+'%s/%s/%s/'%(yyyy,mm,dd) + 'joyrad94_nya_lv1a_%s%s%s*_%s.nc'%(yyyy, mm, dd, info['paths']['miracchirpprogram'])))
-whkfiles = sorted(glob.glob(info['paths']['mirac']+'%s/%s/%s/'%(yyyy,mm,dd) + 'joyrad94_nya_housekeep_lv1a_%s%s%s*_%s.nc'%(yyyy, mm, dd, info['paths']['miracchirpprogram'])))
-wbandl0data = importfct.read_compactfiles(wdatafiles, whkfiles, info, 'Mirac', withdar = False, write=True)
+wdatafiles  = sorted(glob.glob(info['paths']['wband']+'%s/%s/%s/'%(yyyy,mm,dd) + 'joyrad94_nya_lv1a_%s%s%s*_%s.nc'%(yyyy, mm, dd, info['paths']['miracchirpprogram'])))
+whkfiles = sorted(glob.glob(info['paths']['wband']+'%s/%s/%s/'%(yyyy,mm,dd) + 'joyrad94_nya_housekeep_lv1a_%s%s%s*_%s.nc'%(yyyy, mm, dd, info['paths']['miracchirpprogram'])))
+wbandl0data = importfct.read_compactfiles(wdatafiles, whkfiles, info, 'JOYRAD94', withdar = False, write=True)
 
+1/0
 #level1 ================================
 #todo: add rangematchmodes here
 l1data = l1.run(grawacl0data, wbandl0data, info, write=True)
