@@ -26,7 +26,8 @@ def make_dataset(dsvars, attrs, outfile, withdar =True, write=False):
     
     if withdar == True:
         data_vars['DAR'] = (['time','height'], dsvars['LDR'], {'units': 'dB', 'long_name':'Differential Absorption Radar Dual-Frequency Ratio'})
-        data_vars['Ze2'] = (['time','height'], dsvars['Ze2'], {'units': 'mm6 m-3', 'long_name':'GRaWAC Ze at 174.7GHz calculated from Ze167 and LDR'})
+        data_vars['Ze2'] = (['time','height'], dsvars['Ze2'], {'units': 'mm6 m-3', 'long_name':'GRaWAC Ze at 174.7GHz'})
+        data_vars['vd2'] = (['time','height'], dsvars['vd2'], {'units': 'm s-1', 'long_name':'GRaWAC vd at 174.7GHz '})
     
     
     attrs['creation_time'] = dt.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')
@@ -171,7 +172,7 @@ def read_compactfiles(indatafiles, inhkfiles, info, instrumentname, withdar = Fa
     time = (indata.time.values - unix_epoch) / one_second
     print('TODO:check in compact processing whether the time dimension already includes the microseconds stored in the sampletms variable')
     
-    #get variables; and set -999 to nan:
+    #get variables, Ze in linear units; and set -999 to nan:
     Ze = srcfct.get_zlin(indata.ze.values)
     Ze[Ze == -999.] = np.nan
     vd = indata.vm.values
@@ -187,19 +188,18 @@ def read_compactfiles(indatafiles, inhkfiles, info, instrumentname, withdar = Fa
     chirpstartidx = np.unique(indata.chirpseq_startix.values, axis=0)[0]
     
     if withdar == True:
-        #get LDR and calculate Ze2:
-        LDR = np.concatenate([indata['C%iLDR'%i].values for i in np.arange(1,nchirps+1)], axis=1)
+        #get LDR:
+        LDR = indata['ldr'].values
         #LDR missing values are -100 and -999; set them all to -999.
-        LDR[(LDR == -100.) | (LDR == -999)] = np.nan
+        #LDR[(LDR == -100.) | (LDR == -999)] = np.nan
 
         #added factor -1 as RPG logs DAR the wrong way around (174-167 instead of 167-174). LDR is in dB
         LDR *= -1.
-        #now set missing values back to -999:
-        #LDR[LDR>900] = -999.
         
-        #calculate Ze 175 channel from Ze@167 and LDR in linear units mm6/m3
-        LDRlin = 10**(LDR/10.)
-        Ze2 = Ze / LDRlin
+        #convert compact files Ze2 to linear units:
+        ze2lin = 10**(indata['ze_hv'].values/10)
+        Ze2 = ze2lin
+        vd2 = indata['vm_hv'].values
     
     
     #create dataset:
@@ -210,6 +210,9 @@ def read_compactfiles(indatafiles, inhkfiles, info, instrumentname, withdar = Fa
         varnames.append('LDR')
         exportvars.append(Ze2)
         varnames.append('Ze2')
+        exportvars.append(vd2)
+        varnames.append('vd2')
+        
     
     tods = {}
     for vv,var in enumerate(exportvars):
