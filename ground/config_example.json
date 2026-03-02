@@ -1,0 +1,34 @@
+{
+    "global":
+    {"mission":"yourmission",
+    "platform":"yourplatform",
+     "yyyy":"yyyy",
+     "mm":"mm",
+     "dd":"dd",
+     "allday":"1",
+     "hour":"18",
+     "version":"v1.0",
+     "quicklooks":0
+    },
+    "paths":
+ { "mirac":"/path/to/wband/",
+   "grawac":"/path/to/grawac//",
+   "attenuation":"/path/to/attenuationfiles/",
+   "lut":"/path/to/lut/yourlut.nc",
+   "thermo":"/path/to/soundings/rsfile.nc",
+   "gps":"",
+   "miracchirpprogram":"P01",
+   "grawacchirpprogram":"P02",
+   "output":"/your/outputpath/",
+   "quicklooks":"/your/quicklook/path/"
+   },
+   "watervaporsettings":
+{   "R":"200",
+    "tavg":"60s",
+    "minNranges":"3",
+    "Nrolling":"6"
+   },
+   "level1settings":
+{   "mode":["average", "average", "average", "nearest"]
+}
+}
