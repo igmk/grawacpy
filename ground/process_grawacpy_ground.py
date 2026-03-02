@@ -14,30 +14,25 @@ from quicklooks import quicklooks_wv_evaluation_grawac_rs as wvql
 from src import readdata as importfct
 import json
 
-#load retrieval/processing options and input/output paths
-##must contain: 
-#- inputfiletype
-#- perspective (ground/air)
-#- inputpath
-#- attenuationpath
-#- outputpath
-#- R (
-
-
-#opening json file for paths:
-with open("./attrs_paths.json") as json_file:
-    info = json.load(json_file)
 
 print(sys.argv)
 #if code is called with sysargv: replace info['global']['yyyymmdd'] with input timestring.
 if len(sys.argv) > 1:
+    # dates to be processed:
     yyyy = sys.argv[1] #year
     mm = sys.argv[2] #month
     dd = sys.argv[3] #day
     if int(dd) < 10:
         dd=str('0%s'%dd)
-    rr = sys.argv[4] #R
-    tt = sys.argv[5] #tavg
+    #config file name:
+    configname = sys.argv[4]
+    #opening json file for paths:
+    with open("./%s.json"%configname) as json_file:
+        info = json.load(json_file)
+    
+    #water vapor retrieval settings:
+    rr = sys.argv[5] #R
+    tt = sys.argv[6] #tavg
     
 else: #specify through info json file:
     yyyy = info['global']['yyyy']
@@ -53,7 +48,7 @@ info['watervaporsettings']['R'] = rr
 info['watervaporsettings']['tavg'] = '%ss'%tt
 #print(info['watervaporsettings']['R'],info['watervaporsettings']['tavg'] )
 print('processing %s, %s%s%s with water vapor retrieval on R=%sm and tavg=%s'%(info['global']['mission'], yyyy, mm, dd, info['watervaporsettings']['R'], info['watervaporsettings']['tavg']))
-
+1/0
 #print(info['yyyy'], info['mm'], info['dd'])
 
 print('loading Gband files....')
