@@ -11,7 +11,7 @@
      "quicklooks":0
     },
     "paths":
- { "mirac":"/path/to/wband/",
+ { "wband":"/path/to/wband/",
    "grawac":"/path/to/grawac//",
    "attenuation":"/path/to/attenuationfiles/",
    "lut":"/path/to/lut/yourlut.nc",
