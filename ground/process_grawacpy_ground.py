@@ -14,8 +14,6 @@ from quicklooks import quicklooks_wv_evaluation_grawac_rs as wvql
 from src import readdata as importfct
 import json
 
-
-print(sys.argv)
 #if code is called with sysargv: replace info['global']['yyyymmdd'] with input timestring.
 if len(sys.argv) > 1:
     # dates to be processed:
@@ -42,14 +40,13 @@ else: #specify through info json file:
 info['yyyy'] = yyyy
 info['mm'] = mm
 info['dd'] = dd
-#print(rr, tt)
-#print(info['watervaporsettings']['R'],info['watervaporsettings']['tavg'] )
+
+#specify water vapor retrieval settings by reading config file variables:
 info['watervaporsettings']['R'] = rr
 info['watervaporsettings']['tavg'] = '%ss'%tt
-#print(info['watervaporsettings']['R'],info['watervaporsettings']['tavg'] )
+
+
 print('processing %s, %s%s%s with water vapor retrieval on R=%sm and tavg=%s'%(info['global']['mission'], yyyy, mm, dd, info['watervaporsettings']['R'], info['watervaporsettings']['tavg']))
-1/0
-#print(info['yyyy'], info['mm'], info['dd'])
 
 print('loading Gband files....')
 gdatafiles = sorted(glob.glob(info['paths']['grawac'] +'%s/%s/%s/'%(yyyy,mm,dd) +'grawac_%s%s%s_*_%s_ZEN.lv1.NC'%(yyyy, mm, dd, info['paths']['grawacchirpprogram'])))
