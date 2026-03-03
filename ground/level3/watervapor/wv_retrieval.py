@@ -32,9 +32,11 @@ def run_retrieval_ground(radar, thermo, lut, info, write=False):
     
     print('preparing Ze and DAR with quality control')
     #set Ze and Ze2 and DAR to nan where respective SNR is below threshold
-    radar['GZe'][radar['SNRG'] < info['watervaporsettings']['SNRthresh']] = np.nan
-    radar['G2Ze'][radar['SNRG2'] < info['watervaporsettings']['SNRthresh']] = np.nan
-    radar['DAR'][(radar['SNR'] < info['watervaporsettings']['SNRthresh']) | (radar['SNRG2'] < info['watervaporsettings']['SNRthresh'])] = np.nan
+    radar['GZe'].values[radar['SNRG'].values < float(info['watervaporsettings']['SNRthresh'])] = np.nan
+    radar['G2Ze'].values[radar['SNRG'].values < float(info['watervaporsettings']['SNRthresh'])] = np.nan #for now, set 174.7 channel to nan when 167 is attenuated
+    radar['DAR'].values[radar['SNRG'].values < float(info['watervaporsettings']['SNRthresh'])] = np.nan
+    #radar['G2Ze'][radar['SNRG2'] < info['watervaporsettings']['SNRthresh']] = np.nan #once part of matlab processing
+    #radar['DAR'][(radar['SNR'] < info['watervaporsettings']['SNRthresh']) | (radar['SNRG2'] < info['watervaporsettings']['SNRthresh'])] = np.nan
 
     #loop through different R, calculate output profile and save output
     for R in np.asarray([info['watervaporsettings']['R']],dtype=int):

@@ -26,8 +26,8 @@ def run(level2, att, info, write=False):
         level3a[zvars].attrs['units'] = 'dBZ'
     
     #level3a['DAR'].values = helpfct.get_ZdBZ(level2['DAR'].values) #corrected on 3/3/26: DAR is in dB already.
-    level3a['DAR'] = level2['DAR'].values
-    level3a['DAR'].attrs['units'] = 'dB'
+    #level3a['DAR'] = level2['DAR'].values
+    #level3a['DAR'].attrs['units'] = 'dB'
     
     #also convert DFR:
     level3a.DFR.values = level2.WZe.values - level2.GZe.values
@@ -35,12 +35,10 @@ def run(level2, att, info, write=False):
     
     #convert time (level1 is in seconds since 1/1/1970) to datetime timestamp:
     nt = level3a.time.shape[0]
-    level3a = level3a.assign_coords(time = np.array([dt.datetime.fromtimestamp(level3a.time.values[t], dt.UTC) for t in range(nt)], dtype=object))
-    
-    #quality filtering
-    print('quality filtering yet to be done. ie: clutter filter; above SNR for DAR signal')
+    level3a = level3a.assign_coords(time = np.array([dt.datetime.utcfromtimestamp(level3a.time.values[t]) for t in range(nt)], dtype=object))
     
     #interpolate att onto radar time and height:
+    print('interpolating attenuation to radar time and height...')
     attinter = att.Att_atmo.interp(time=level3a.time, height=level3a.height)
     
     #calculate attenuation corrected variables. (and rename the old ones first)

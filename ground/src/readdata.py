@@ -228,7 +228,7 @@ def read_compactfiles(indatafiles, inhkfiles, inspfiles, info, instrumentname, w
         inspdata.close()
     print('concatenating...')
     meannoise = xr.concat(meannoise, dim='time')
-    snr = Ze/srcfct.get_zlin(meannoise.values) #signal-to-noise ratio in dB
+    snr = srcfct.get_ZdBZ(Ze/srcfct.get_zlin(meannoise.values)) #signal-to-noise ratio in dB
     
     print('creating dataset...')
 

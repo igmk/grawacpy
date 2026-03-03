@@ -61,8 +61,8 @@ def range_matching(wdata, gdata, modes):
     '''
     matches W and Gband in range; ie wband to gband
     input:
-    - wdata level0
-    - gdata level0
+    - wdata level1
+    - gdata level1
     - matchmode: array with nchirp entries specifying 'average' (average all bins within one G-band bin) or 'nearest' (find nearest neighbor in terms of center range)
     '''
     
@@ -122,7 +122,7 @@ def range_matching(wdata, gdata, modes):
     
     coords = {'gtime':(['gtime'], gdata.time.values, {'units':'UTC', 'long_name':'Grawac time'}),
               'wtime':(['wtime'], wdata.time.values, {'units':'UTC', 'long_name':'Wband time'}),
-              'l2height':(['l2height'], gdata.height.values, {'units':'m', 'long_name':'Level-1 height, same as level0 gband height'}),
+              'l2height':(['l2height'], gdata.height.values, {'units':'m', 'long_name':'Level-2 height, same as level1 gband height'}),
               'modes':(['modes'], modes, {'long_name':'mode chosen for each chirp sequence for range matching'})
              }
     
@@ -154,8 +154,8 @@ def do_range_matching(rangew, rangeg, WZe, Wvd, mode):
     - Ze: reflectivity array of W-band [nt, nzg]
     - vd: mean doppler vel array of W-.band [nt, nzg]
     
-    - wdata: xarray level0 wdata
-    - gdata: xarray level0 gdata
+    - wdata: xarray level1 wdata
+    - gdata: xarray level1 gdata
     
     output:
     - Zew_rc_std: if mode==nearest: vertical distance between range center of g-band and nearest neighbor in wband; if mode == average: standard deviation of Zew bins averaged for each g-band range bin. dimensions are on wband time as range-match is before time match.
@@ -263,8 +263,8 @@ def time_matching(WGrangematch, wdata, gdata):
     match wband radar data temporally with gband data; ie find closest wband measurement to each gband measurement. output dimension: gband height, gband time.
     input:
     - WGrangematch: xarray dataset with moments matched in range (output of range_match()) on their original time resolution
-    - gdata: level0 data
-    - wdata: level0 data
+    - gdata: level1 data
+    - wdata: level1 data
     '''
     nchirps = wdata.nchirp.shape[0]
     nt = WGrangematch.gtime.shape[0]
@@ -320,7 +320,7 @@ def time_matching(WGrangematch, wdata, gdata):
     
     #output: xarray dataset with coordinates Wtime, Gtime, l1height (means here G-height)
     coords = {'l2time':(['l2time'], gdata.time.values, {'units':'UTC', 'long_name':'Grawac time'}),
-              'l2height':(['l2height'], gdata.height.values, {'units':'m', 'long_name':'Level-1 height, same as level0 gband height'})
+              'l2height':(['l2height'], gdata.height.values, {'units':'m', 'long_name':'Level-1 height, same as level1 gband height'})
               #'nchirp':(['nchirp'], np.arange(nchirps))
              }
     
@@ -350,14 +350,14 @@ def create_dataset(wgtimematch, wdata, gdata, info, write=False):
     '''
     input:
     - wgtimematch: xr dataset with time-range matched Zes, DFR, DDV
-    - gdata: xr dataset with level0 gband
-    - wdata: xr dataset with level0 wband
+    - gdata: xr dataset with level1 gband
+    - wdata: xr dataset with level1 wband
     - write: True/False; if True then netcdf output is written
     output:
     - level2: level2 dataset dual-frequency time and range matched.
     '''
     
-    coords = {'time':(['time'], wgtimematch.l1time.values, {'units':'seconds since 1/1/1970', 'long_name':'time'}),
+    coords = {'time':(['time'], wgtimematch.l2time.values, {'units':'seconds since 1/1/1970', 'long_name':'time'}),
               'height':(['height'], wgtimematch.l2height.values, {'units':'m', 'long_name':'height asl (range+instrumentaltitude)'}),
               'nchirp':(['nchirp'], wdata.nchirp.values, {'long_name':'chirp sequences'})
              }
@@ -374,7 +374,7 @@ def create_dataset(wgtimematch, wdata, gdata, info, write=False):
     'timeshift': (['time','height'], wgtimematch.timeshift.values, {'units': 's', 'long_name':'Time shift of Wband radar compared to Gband sequence times'}),
     'Gchirpidx': (['nchirp'], np.asarray(gdata.chirpseq_startix.values, dtype=int), {'units': '-', 'long_name':'Chirp sequence start index in height dimension'}),
     'SNRG' : (['time','height'], gdata.SNR.values, {'units': 'dB', 'long_name':'SNR at 167.3'}),
-    'SNRG2' : (['time','height'], gdata.SNR2.values, {'units': 'dB', 'long_name':'SNR at 174.7'})
+    #'SNRG2' : (['time','height'], gdata.SNR2.values, {'units': 'dB', 'long_name':'SNR at 174.7'}) #include once part of matlab processing
     }
     
     

@@ -10,7 +10,7 @@ def run(gdata, wdata, info, write=False):
     - grawac: xarray dataset with original gband dataset, dimensions: height, time, chirps
     - wband: xarray dataset with original wdata dataset, dimensions: height, time, chirps
     - info: xarray dataset with info json file imported
-    - write: optional; level1 dataset stored if write==True.
+    - write: optional; level2 dataset stored if write==True.
     
     '''
     
@@ -41,7 +41,7 @@ def run(gdata, wdata, info, write=False):
     ### todo: get the modes from level before
     #modes = ['average', 'average', 'average', 'nearest']
     print('range matching...')
-    wgrangematch = fct.range_matching(wdata, gdata, info['level1settings']['mode'])
+    wgrangematch = fct.range_matching(wdata, gdata, info['level2settings']['mode'])
     
     #now do time matching and also calculate DFR and DDV ===================
     wgtimematch = fct.time_matching(wgrangematch, wdata, gdata)
@@ -51,7 +51,7 @@ def run(gdata, wdata, info, write=False):
     
     
     #flagging: all DFR with timeshift larger than 1 second is nan:
-    level2.DFR.values[level1.timeshift.values > 1] = np.nan
+    level2.DFR.values[level2.timeshift.values > 1] = np.nan
     
     return level2
 
