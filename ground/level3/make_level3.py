@@ -6,65 +6,62 @@ import json
 from level3.src import level3_functions as fct
 from src import helpfunctions as helpfct
 
-def run(level1, att, info, write=False):
+def run(level2, att, info, write=False):
     '''
-    create level2 dataset, including attenuation correction.
+    create level3a dataset, including attenuation correction.
     input:
-    - level1: level1 xarray dataset
+    - level2: level2 xarray dataset (dual-frequency matched)
     - att: xarray dataset with attenuation information
     - info: xarray dataset with attribtues
-    - write: optional, if True: output stored to netcdf:
+    - write: optional, if True: output stored to netcdf
+    output:
+    - level3a: attenuation corrected.
     '''
     
-    level2 = level1.copy()
+    level3a = level2.copy()
     
     #convert Ze and DFR to dB and change unit attribute in xarray:
     for zvars in ['WZe', 'GZe', 'G2Ze']:
-        level2[zvars].values = helpfct.get_ZdBZ(level1[zvars].values)
-        level2[zvars].attrs['units'] = 'dBZ'
+        level3a[zvars].values = helpfct.get_ZdBZ(level2[zvars].values)
+        level3a[zvars].attrs['units'] = 'dBZ'
     
-    level2['DAR'].values = helpfct.get_ZdBZ(level1['DAR'].values)
-    level2['DAR'].attrs['units'] = 'dB'
+    #level3a['DAR'].values = helpfct.get_ZdBZ(level2['DAR'].values) #corrected on 3/3/26: DAR is in dB already.
+    level3a['DAR'] = level2['DAR'].values
+    level3a['DAR'].attrs['units'] = 'dB'
     
     #also convert DFR:
-    level2.DFR.values = level2.WZe.values - level2.GZe.values
-    level2.DFR.attrs['units'] = 'dB'
+    level3a.DFR.values = level2.WZe.values - level2.GZe.values
+    level3a.DFR.attrs['units'] = 'dB'
     
     #convert time (level1 is in seconds since 1/1/1970) to datetime timestamp:
-    nt = level2.time.shape[0]
-    level2 = level2.assign_coords(time = np.array([dt.datetime.utcfromtimestamp(level2.time.values[t]) for t in range(nt)], dtype=object))
+    nt = level3a.time.shape[0]
+    level3a = level3a.assign_coords(time = np.array([dt.datetime.fromtimestamp(level3a.time.values[t], dt.UTC) for t in range(nt)], dtype=object))
     
     #quality filtering
     print('quality filtering yet to be done. ie: clutter filter; above SNR for DAR signal')
     
-    #13.7. comment attenuation correction just for laptop usage right now; make sure to remove!
-    #attenuation correction
-    
     #interpolate att onto radar time and height:
-    
-    attinter = att.Att_atmo.interp(time=level2.time, height=level2.height)
+    attinter = att.Att_atmo.interp(time=level3a.time, height=level3a.height)
     
     #calculate attenuation corrected variables. (and rename the old ones first)
     
-    for level2key, attkey in [['W',94], ['G',167], ['G2',174]]:
-        level2['%sZe_attcorr'%level2key] = level2['%sZe'%level2key] + attinter.sel(freq=int(attkey), method='nearest')
+    for level3akey, attkey in [['W',94], ['G',167], ['G2',174]]:
+        level3a['%sZe_attcorr'%level3akey] = level3a['%sZe'%level3akey] + attinter.sel(freq=int(attkey), method='nearest')
     
-    level2 = level2.assign(DFR_attcorr = level2.WZe_attcorr - level2.GZe_attcorr)
-    level2.DFR_attcorr.attrs['units'] = 'dB'
-    level2.DFR_attcorr.attrs['long_name'] = 'attenuation corrected DFR W-G'
-    
-    
+    level3a = level3a.assign(DFR_attcorr = level3a.WZe_attcorr - level3a.GZe_attcorr)
+    level3a.DFR_attcorr.attrs['units'] = 'dB'
+    level3a.DFR_attcorr.attrs['long_name'] = 'attenuation corrected DFR W-G'
     
     #change some attributes:
-    level2.attrs['title'] = 'Joint dataset of Grawac and Wband (Level2)'
-    level2.attrs['creation_time'] = dt.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')
-    level2.attrs['product-id'] = 'Level-2'
+    level3a.attrs['title'] = 'Joint dataset of Grawac and Wband, including attenuation correction (Level3a)'
+    level3a.attrs['creation_time'] = dt.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')
+    level3a.attrs['product-id'] = 'Level-3a'
     
     if write==True:
-        ncfile = info['global']['mission'] +'_%s_level2_draco_%s%s%s.nc'%(info['global']['version'], info['yyyy'], info['mm'], info['dd'])
-        level2.to_netcdf(info['paths']['output'] + ncfile)
+        ncfile = info['global']['mission'] +'_%s_level3a_draco_%s%s%s.nc'%(info['global']['version'], info['yyyy'], info['mm'], info['dd'])
+        level3a.to_netcdf(info['paths']['output'] + ncfile)
     
-    return level2
+    return level3a
 
 
 
@@ -107,6 +104,6 @@ def attenuation_correction(attfiles, geometry, slant, info, write=False):
         print('applying slant factor.')
     
     if write == True:
-        attcum.to_netcdf('./attenuation.nc')
+        attcum.to_netcdf(info['paths']['output']+'attenuation.nc')
     
     return attcum

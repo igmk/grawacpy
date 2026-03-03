@@ -22,8 +22,8 @@ def make_dataset(dsvars, attrs, outfile, withdar =True, write=False):
     'maxvel' : (['nchirp'], dsvars['maxvel'], {'units': 'm/s', 'long_name':'Nyquist velocity each chirp sequence.'}),
     'instrument_altitude': (['nchirp'], np.broadcast_to(dsvars['instrumentalt'], dsvars['nchirps']), {'units': 'm', 'long_name':'altitude msl of sensor. variable was added to range to obtain height variable. '}),
     'freq':(['nchirp'], np.broadcast_to(dsvars['freq'], dsvars['nchirps']), {'units':'GHz', 'long_name':'Radar transmitted frequency' }),
-    'snr':(['time','height'], dsvars['snr'], {'units':'dB', 'long_name':'Radar Signal-to-Noise Ratio calculated from noise floor' }),
-    'sl':(['time','height'], dsvars['sl'], {'units':'mm6 m-3', 'long_name':'Sensitivity Limit of the measurement; threshold in radar software (multiple of STD of spectrally-resolved noise power)' })
+    'SNR':(['time','height'], dsvars['snr'], {'units':'dB', 'long_name':'Radar Signal-to-Noise Ratio calculated from noise floor' }),
+    'SL':(['time','height'], dsvars['sl'], {'units':'mm6 m-3', 'long_name':'Sensitivity Limit of the measurement; threshold in radar software (multiple of STD of spectrally-resolved noise power)' })
         }
     
     if withdar == True:
@@ -31,7 +31,7 @@ def make_dataset(dsvars, attrs, outfile, withdar =True, write=False):
         data_vars['Ze2'] = (['time','height'], dsvars['Ze2'], {'units': 'mm6 m-3', 'long_name':'GRaWAC Ze at 174.7GHz'})
         data_vars['vd2'] = (['time','height'], dsvars['vd2'], {'units': 'm s-1', 'long_name':'GRaWAC vd at 174.7GHz '})
         #data_vars['snr2']= (['time','height'], dsvars['snr2'], {'units':'dB', 'long_name':'Radar Signal-to-Noise Ratio calculated from noise floor' })
-        data_vars['sl2'] = (['time','height'], dsvars['sl2'], {'units':'mm6 m-3', 'long_name':'Sensitivity Limit of the measurement at 174.7GHz; threshold in radar software (multiple of STD of spectrally-resolved noise power)' })
+        data_vars['SL2'] = (['time','height'], dsvars['sl2'], {'units':'mm6 m-3', 'long_name':'Sensitivity Limit of the measurement at 174.7GHz; threshold in radar software (multiple of STD of spectrally-resolved noise power)' })
     
     attrs['creation_time'] = dt.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')
     

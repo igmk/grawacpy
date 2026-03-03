@@ -32,9 +32,9 @@ def run_retrieval_ground(radar, thermo, lut, info, write=False):
     
     print('preparing Ze and DAR with quality control')
     #set Ze and Ze2 and DAR to nan where respective SNR is below threshold
-    radar['GZe'][radar['snr'] < info['watervaporsettings']['SNRthresh']] = np.nan
-    radar['G2Ze'][radar['snr2'] < info['watervaporsettings']['SNRthresh']] = np.nan
-    radar['DAR'][(radar['snr'] < info['watervaporsettings']['SNRthresh']) or (radar['snr2'] < info['watervaporsettings']['SNRthresh'])] = np.nan
+    radar['GZe'][radar['SNRG'] < info['watervaporsettings']['SNRthresh']] = np.nan
+    radar['G2Ze'][radar['SNRG2'] < info['watervaporsettings']['SNRthresh']] = np.nan
+    radar['DAR'][(radar['SNR'] < info['watervaporsettings']['SNRthresh']) | (radar['SNRG2'] < info['watervaporsettings']['SNRthresh'])] = np.nan
 
     #loop through different R, calculate output profile and save output
     for R in np.asarray([info['watervaporsettings']['R']],dtype=int):
@@ -78,11 +78,11 @@ def run_retrieval_ground(radar, thermo, lut, info, write=False):
         if write==True:
             
             #output of original profiles:
-            ncfile = info['global']['mission'] +'_%s_level2_watervapor_%s%s%s_R%i_tavg%s_original.nc'%(info['global']['version'], info['yyyy'], info['mm'], info['dd'], R, info['watervaporsettings']['tavg'])
-            wvxrds.to_netcdf(info['paths']['output'] + ncfile)
+            #ncfile = info['global']['mission'] +'_%s_level3b_watervapor_%s%s%s_R%i_tavg%s_original.nc'%(info['global']['version'], info['yyyy'], info['mm'], info['dd'], R, info['watervaporsettings']['tavg'])
+            #wvxrds.to_netcdf(info['paths']['output'] + ncfile)
             
             #output of smoothed profiles:
-            ncfile = info['global']['mission'] +'_%s_level2_watervapor_%s%s%s_R%i_tavg%s.nc'%(info['global']['version'], info['yyyy'], info['mm'], info['dd'], R, info['watervaporsettings']['tavg'])
+            ncfile = info['global']['mission'] +'_%s_level3b_watervapor_%s%s%s_R%i_tavg%s.nc'%(info['global']['version'], info['yyyy'], info['mm'], info['dd'], R, info['watervaporsettings']['tavg'])
             wvxrdssmooth.to_netcdf(info['paths']['output'] + ncfile)
             
         

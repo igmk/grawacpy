@@ -47,13 +47,13 @@ def run(gdata, wdata, info, write=False):
     wgtimematch = fct.time_matching(wgrangematch, wdata, gdata)
     
     #create level1 xarray dataset:
-    level1 = fct.create_dataset(wgtimematch, wdata, gdata, info, write=write)
+    level2 = fct.create_dataset(wgtimematch, wdata, gdata, info, write=write)
     
     
     #flagging: all DFR with timeshift larger than 1 second is nan:
-    level1.DFR.values[level1.timeshift.values > 1] = np.nan
+    level2.DFR.values[level1.timeshift.values > 1] = np.nan
     
-    return level1
+    return level2
 
 
 def run_triplefreq(gdata, wdata, kadata, info, write=False):
@@ -100,13 +100,13 @@ def run_triplefreq(gdata, wdata, kadata, info, write=False):
     wgtimematch = fct.time_matching(wgrangematch, wdata, gdata)
     
     #create level1 xarray dataset:
-    level1 = fct.create_dataset(wgtimematch, wdata, gdata, info, write=write)
+    level2 = fct.create_dataset(wgtimematch, wdata, gdata, info, write=write)
     
     
     #flagging: all DFR with timeshift larger than 1 second is nan:
-    level1.DFR.values[level1.timeshift.values > 1] = np.nan
+    level2.DFR.values[level2.timeshift.values > 1] = np.nan
     
-    return level1
+    return level2
 
 
 def quicklooks(l1, info, write=False):
