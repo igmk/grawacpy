@@ -56,17 +56,21 @@ print('loading Gband files....')
 #gdatafiles = sorted(glob.glob(info['paths']['grawac'] +'%s/%s/%s/'%(yyyy,mm,dd) +'grawac_%s%s%s_*_%s_ZEN.lv1.NC'%(yyyy, mm, dd, info['paths']['grawacchirpprogram'])))
 gdatafiles  = sorted(glob.glob(info['paths']['grawac']+'%s/%s/%s/'%(yyyy,mm,dd) + 'grawac_nya_lv1a_%s%s%s*_%s.nc'%(yyyy, mm, dd, info['paths']['grawacchirpprogram'])))
 ghkfiles = sorted(glob.glob(info['paths']['grawac']+'%s/%s/%s/'%(yyyy,mm,dd) + 'grawac_nya_housekeep_lv1a_%s%s%s*_%s.nc'%(yyyy, mm, dd, info['paths']['grawacchirpprogram'])))
+gspfiles = sorted(glob.glob(info['paths']['grawac']+'%s/%s/%s/'%(yyyy,mm,dd) + 'grawac_nya_spectra_lv1a_%s%s%s*_%s.nc'%(yyyy, mm, dd, info['paths']['grawacchirpprogram'])))
 #print(gdatafiles)
 
 #grawacl0data = importfct.read_rpg_lv1(gdatafiles, info, 'GRaWAC', instrumentaltinput = 15, withdar=True, write=True)
-grawacl0data = importfct.read_compactfiles(gdatafiles, ghkfiles, info, 'GRaWAC', withdar=True, write=True)
+grawacl0data = importfct.read_compactfiles(gdatafiles, ghkfiles, gspfiles, info, 'GRaWAC', withdar=True, write=False)
+
+
 
 print('loading Wband files....')
 wdatafiles  = sorted(glob.glob(info['paths']['wband']+'%s/%s/%s/'%(yyyy,mm,dd) + 'joyrad94_nya_lv1a_%s%s%s*_%s.nc'%(yyyy, mm, dd, info['paths']['miracchirpprogram'])))
 whkfiles = sorted(glob.glob(info['paths']['wband']+'%s/%s/%s/'%(yyyy,mm,dd) + 'joyrad94_nya_housekeep_lv1a_%s%s%s*_%s.nc'%(yyyy, mm, dd, info['paths']['miracchirpprogram'])))
-wbandl0data = importfct.read_compactfiles(wdatafiles, whkfiles, info, 'JOYRAD94', withdar = False, write=True)
+wspfiles = sorted(glob.glob(info['paths']['wband']+'%s/%s/%s/'%(yyyy,mm,dd) + 'joyrad94_nya_spectra_lv1a_%s%s%s*_%s.nc'%(yyyy, mm, dd, info['paths']['miracchirpprogram'])))
+wbandl0data = importfct.read_compactfiles(wdatafiles, whkfiles, wspfiles, info, 'JOYRAD94', withdar = False, write=False)
 
-1/0
+
 #level1 ================================
 #todo: add rangematchmodes here
 l1data = l1.run(grawacl0data, wbandl0data, info, write=True)

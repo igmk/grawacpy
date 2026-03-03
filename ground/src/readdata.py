@@ -21,17 +21,19 @@ def make_dataset(dsvars, attrs, outfile, withdar =True, write=False):
     'navg' : (['nchirp'], dsvars['navg'], {'units': '-', 'long_name':'number of chirps averaged.'}),
     'maxvel' : (['nchirp'], dsvars['maxvel'], {'units': 'm/s', 'long_name':'Nyquist velocity each chirp sequence.'}),
     'instrument_altitude': (['nchirp'], np.broadcast_to(dsvars['instrumentalt'], dsvars['nchirps']), {'units': 'm', 'long_name':'altitude msl of sensor. variable was added to range to obtain height variable. '}),
-    'freq':(['nchirp'], np.broadcast_to(dsvars['freq'], dsvars['nchirps']), {'units':'GHz', 'long_name':'Radar transmitted frequency' })
+    'freq':(['nchirp'], np.broadcast_to(dsvars['freq'], dsvars['nchirps']), {'units':'GHz', 'long_name':'Radar transmitted frequency' }),
+    'snr':(['time','height'], dsvars['snr'], {'units':'dB', 'long_name':'Radar Signal-to-Noise Ratio calculated from noise floor' }),
+    'sl':(['time','height'], dsvars['sl'], {'units':'mm6 m-3', 'long_name':'Sensitivity Limit of the measurement; threshold in radar software (multiple of STD of spectrally-resolved noise power)' })
         }
     
     if withdar == True:
         data_vars['DAR'] = (['time','height'], dsvars['LDR'], {'units': 'dB', 'long_name':'Differential Absorption Radar Dual-Frequency Ratio'})
         data_vars['Ze2'] = (['time','height'], dsvars['Ze2'], {'units': 'mm6 m-3', 'long_name':'GRaWAC Ze at 174.7GHz'})
         data_vars['vd2'] = (['time','height'], dsvars['vd2'], {'units': 'm s-1', 'long_name':'GRaWAC vd at 174.7GHz '})
-    
+        #data_vars['snr2']= (['time','height'], dsvars['snr2'], {'units':'dB', 'long_name':'Radar Signal-to-Noise Ratio calculated from noise floor' })
+        data_vars['sl2'] = (['time','height'], dsvars['sl2'], {'units':'mm6 m-3', 'long_name':'Sensitivity Limit of the measurement at 174.7GHz; threshold in radar software (multiple of STD of spectrally-resolved noise power)' })
     
     attrs['creation_time'] = dt.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')
-    
     
     xrds = xr.Dataset(data_vars, coords, attrs)
     if write==True:
@@ -145,25 +147,25 @@ def read_rpg_lv1(infiles, info, instrumentname, instrumentaltinput=True, withdar
 
 
 
-def read_compactfiles(indatafiles, inhkfiles, info, instrumentname, withdar = False, write=False ):
+def read_compactfiles(indatafiles, inhkfiles, inspfiles, info, instrumentname, withdar = False, write=False ):
     '''
     read compact nc files, return same dataset as above
     '''
     
+    print('...reading lv1a')
     try:
+        #print('mfopen')
         indata = xr.open_mfdataset(indatafiles)
     except ValueError:
+        #print('looping')
         indata = []
         for infile in indatafiles:
             indatasingle = xr.open_dataset(infile)
             indata.append(indatasingle)
             indatasingle.close()
-        indata = xr.concat(indata,dim='Time')
-        print('need to remove double time stamps???')    
+        indata = xr.concat(indata,dim='time')  
     
-    #also housekeeping files:
-    inhkdata = xr.open_mfdataset(inhkfiles)
-    
+    #------
     nchirps = len(indata.chirp_sequence.values)
     
     #convert wband time from numpy64datetime to seconds since 1/1/1970:
@@ -173,14 +175,15 @@ def read_compactfiles(indatafiles, inhkfiles, info, instrumentname, withdar = Fa
     print('TODO:check in compact processing whether the time dimension already includes the microseconds stored in the sampletms variable')
     
     #get variables, Ze in linear units; and set -999 to nan:
-    Ze = srcfct.get_zlin(indata.ze.values)
+    Ze = srcfct.get_zlin(indata.ze.values) #radar reflectivity
     Ze[Ze == -999.] = np.nan
-    vd = indata.vm.values
+    vd = indata.vm.values #mean Doppler velocity
     vd[vd == -999.] = np.nan
     rheight = indata.height.values #in compact files, stored height coordinate already includes instrumentaltitude
-    freq = np.unique(indata.frequency.values)[0]
+    freq = np.unique(indata.frequency.values)[0] #frequency measured
+    sl = indata.noise_threshold.values #sensitivity limit given by radar software threshold
     
-    navg = np.unique(inhkdata.num_avg_chirps.values, axis=0)[0]
+        
     #sampletms = np.unique(inhkdata.sample_tms.values, axis=0)[0]
     maxvel = np.unique(indata.nyquist_velocity.values, axis=0)[0] #returns array with nchirps entries
     
@@ -199,12 +202,39 @@ def read_compactfiles(indatafiles, inhkfiles, info, instrumentname, withdar = Fa
         #convert compact files Ze2 to linear units:
         ze2lin = 10**(indata['ze_hv'].values/10)
         Ze2 = ze2lin
+        #add 2nd frequency Doppler velocity:
         vd2 = indata['vm_hv'].values
+        #sensitivity limit second frequency:
+        sl2 = indata.noise_threshold_cross.values
     
+    #close indata files:
+    indata.close()
+
+    #now open housekeeping:
+    #also housekeeping files:
+    print('...reading housekeeping')
+    inhkdata = xr.open_mfdataset(inhkfiles)
+    navg = np.unique(inhkdata.num_avg_chirps.values.copy(), axis=0)[0]
+    inhkdata.close()
+
+    #and spectra files:
+    print('...reading spectra')
     
+    meannoise = []
+    for ii,inspfile in enumerate(inspfiles):
+        #print('reading spectra file %i '%ii)
+        inspdata = xr.open_dataset(inspfile)
+        meannoise.append(inspdata.mean_noise) 
+        inspdata.close()
+    print('concatenating...')
+    meannoise = xr.concat(meannoise, dim='time')
+    snr = Ze/srcfct.get_zlin(meannoise.values) #signal-to-noise ratio in dB
+    
+    print('creating dataset...')
+
     #create dataset:
-    exportvars = [Ze, vd, rheight, freq, navg, maxvel, time, nchirps, instrumentalt, chirpstartidx]
-    varnames = ['Ze', 'vd', 'rheight', 'freq', 'navg', 'maxvel', 'time', 'nchirps', 'instrumentalt', 'chirpstartidx']
+    exportvars = [Ze, vd, rheight, freq, navg, maxvel, time, nchirps, instrumentalt, chirpstartidx, snr, sl]
+    varnames = ['Ze', 'vd', 'rheight', 'freq', 'navg', 'maxvel', 'time', 'nchirps', 'instrumentalt', 'chirpstartidx', 'snr','sl']
     if withdar == True:
         exportvars.append(LDR)
         varnames.append('LDR')
@@ -212,8 +242,9 @@ def read_compactfiles(indatafiles, inhkfiles, info, instrumentname, withdar = Fa
         varnames.append('Ze2')
         exportvars.append(vd2)
         varnames.append('vd2')
+        exportvars.append(sl2)
+        varnames.append('sl2')
         
-    
     tods = {}
     for vv,var in enumerate(exportvars):
         tods[varnames[vv]] = var
