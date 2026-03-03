@@ -1,112 +1,115 @@
-import xarray as xr
 import numpy as np
-import datetime as dt
-import json
+import xarray as xr
 
 from level2.src import level2_functions as fct
-from src import helpfunctions as helpfct
 
-def run(level1, att, info, write=False):
+
+def run(gdata, wdata, info, write=False):
     '''
-    create level2 dataset, including attenuation correction.
     input:
-    - level1: level1 xarray dataset
-    - att: xarray dataset with attenuation information
-    - info: xarray dataset with attribtues
-    - write: optional, if True: output stored to netcdf:
+    - grawac: xarray dataset with original gband dataset, dimensions: height, time, chirps
+    - wband: xarray dataset with original wdata dataset, dimensions: height, time, chirps
+    - info: xarray dataset with info json file imported
+    - write: optional; level1 dataset stored if write==True.
+    
     '''
     
-    level2 = level1.copy()
+    nchirps = wdata.nchirp.shape[0]
     
-    #convert Ze and DFR to dB and change unit attribute in xarray:
-    for zvars in ['WZe', 'GZe', 'G2Ze']:
-        level2[zvars].values = helpfct.get_ZdBZ(level1[zvars].values)
-        level2[zvars].attrs['units'] = 'dBZ'
+    print('calculating chirp characteristics...')
     
-    level2['DAR'].values = helpfct.get_ZdBZ(level1['DAR'].values)
-    level2['DAR'].attrs['units'] = 'dB'
+    #calculate chirp repetition time and chirp duration for each input; add them to the dataset. (nchirp dimension)
+    ChirpRepTime_W = fct.calculate_chirp_repetition_time(wdata.maxvel.values, wdata.freq.values*1e09)
+    ChirpRepTime_G = fct.calculate_chirp_repetition_time(gdata.maxvel.values, gdata.freq.values*1e09)
     
-    #also convert DFR:
-    level2.DFR.values = level2.WZe.values - level2.GZe.values
-    level2.DFR.attrs['units'] = 'dB'
+    # calculate chirp duration
+    ChirpDuration_W = ChirpRepTime_W * wdata.navg.values
+    ChirpDuration_G = ChirpRepTime_G * gdata.navg.values
     
-    #convert time (level1 is in seconds since 1/1/1970) to datetime timestamp:
-    nt = level2.time.shape[0]
-    level2 = level2.assign_coords(time = np.array([dt.datetime.utcfromtimestamp(level2.time.values[t]) for t in range(nt)], dtype=object))
+    #calculate chirp sequence time stamps:
+    #calculate a timestampe giving out the time in the middle of each chirp sequence. output dimension: (nt x nchirps)
+    WSeqTime = fct.get_seqtime(wdata.time, ChirpDuration_W, nchirps)
+    GSeqTime = fct.get_seqtime(gdata.time, ChirpDuration_G, nchirps)
     
-    #quality filtering
-    print('quality filtering yet to be done. ie: clutter filter; above SNR for DAR signal')
     
-    #13.7. comment attenuation correction just for laptop usage right now; make sure to remove!
-    #attenuation correction
-    
-    #interpolate att onto radar time and height:
-    
-    attinter = att.Att_atmo.interp(time=level2.time, height=level2.height)
-    
-    #calculate attenuation corrected variables. (and rename the old ones first)
-    
-    for level2key, attkey in [['W',94], ['G',167], ['G2',174]]:
-        level2['%sZe_attcorr'%level2key] = level2['%sZe'%level2key] + attinter.sel(freq=int(attkey), method='nearest')
-    
-    level2 = level2.assign(DFR_attcorr = level2.WZe_attcorr - level2.GZe_attcorr)
-    level2.DFR_attcorr.attrs['units'] = 'dB'
-    level2.DFR_attcorr.attrs['long_name'] = 'attenuation corrected DFR W-G'
+    wdata = wdata.assign(chirpreptime = (['nchirp'], ChirpRepTime_W), chirpduration = ([ 'nchirp'], ChirpDuration_W), chirpseqtime = (['time', 'nchirp'], WSeqTime))
+    gdata = gdata.assign(chirpreptime = (['nchirp'], ChirpRepTime_G), chirpduration = ([ 'nchirp'], ChirpDuration_G), chirpseqtime = (['time', 'nchirp'], GSeqTime))
     
     
     
-    #change some attributes:
-    level2.attrs['title'] = 'Joint dataset of Grawac and Wband (Level2)'
-    level2.attrs['creation_time'] = dt.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')
-    level2.attrs['product-id'] = 'Level-2'
+    #now do range matching ================
+    ### todo: get the modes from level before
+    #modes = ['average', 'average', 'average', 'nearest']
+    print('range matching...')
+    wgrangematch = fct.range_matching(wdata, gdata, info['level1settings']['mode'])
     
-    if write==True:
-        ncfile = info['global']['mission'] +'_%s_level2_draco_%s%s%s.nc'%(info['global']['version'], info['yyyy'], info['mm'], info['dd'])
-        level2.to_netcdf(info['paths']['output'] + ncfile)
+    #now do time matching and also calculate DFR and DDV ===================
+    wgtimematch = fct.time_matching(wgrangematch, wdata, gdata)
     
-    return level2
+    #create level1 xarray dataset:
+    level1 = fct.create_dataset(wgtimematch, wdata, gdata, info, write=write)
+    
+    
+    #flagging: all DFR with timeshift larger than 1 second is nan:
+    level1.DFR.values[level1.timeshift.values > 1] = np.nan
+    
+    return level1
 
 
-
-
-def attenuation_correction(attfiles, geometry, slant, info, write=False):
+def run_triplefreq(gdata, wdata, kadata, info, write=False):
     '''
-    gas attenuation function. provides 
-    attfiles: files with calculated gas attenuation
-    geometry: valid option: td (top-down); bu (bottom-up)
-    slant: slant factor; can be set to False if nadir/zenith looking
+    input:
+    - grawac: xarray dataset with original gband dataset, dimensions: height, time, chirps
+    - wband: xarray dataset with original wdata dataset, dimensions: height, time, chirps
+    - kadata: xarray dataset with original ka-band dataset, dimensions: height, time, chirps
+    - info: xarray dataset with info json file imported
+    - write: optional; level1 dataset stored if write==True.
     
-    info: info json dataset
-    write: optional, if set True: output stored to netcdf
     '''
     
-    #open attenuation profiles
-    attrs = xr.open_mfdataset(attfiles) #dataset with attenuation profiles for each sounding+freq, on arb height
+    nchirps = wdata.nchirp.shape[0]
     
-    #cumulate depending on geometry:
-    attcum = attrs.copy()
+    print('calculating chirp characteristics...')
     
-    #convert launchtime coordinate to datetime:
-    nt = attcum.launchtime.shape[0]
-    attcum = attcum.assign_coords( launchtime=np.asarray([dt.datetime.strptime(str(attrs.launchtime.values[t]), '%Y%m%d%H%M') for t in range(nt)],dtype=object))
+    #calculate chirp repetition time and chirp duration for each input; add them to the dataset. (nchirp dimension)
+    ChirpRepTime_W = fct.calculate_chirp_repetition_time(wdata.maxvel.values, wdata.freq.values*1e09)
+    ChirpRepTime_G = fct.calculate_chirp_repetition_time(gdata.maxvel.values, gdata.freq.values*1e09)
     
-    #and rename the variable to time:
-    attcum = attcum.rename({'launchtime':'time'})
+    # calculate chirp duration
+    ChirpDuration_W = ChirpRepTime_W * wdata.navg.values
+    ChirpDuration_G = ChirpRepTime_G * gdata.navg.values
     
-    if geometry == 'bu':
-        attcum.Att_atmo.values = 2*attrs.Att_atmo.cumsum(dim='height').values
-    elif geometry == 'td':
-        print('check calculation.')
-        attcum.Att_atmo.values = 2*attrs.Att_atmo.cumsum(dim='height').values
-        1/0
-    else:
-        print('geometry not specified. returning.')
-        return
+    #calculate chirp sequence time stamps:
+    #calculate a timestampe giving out the time in the middle of each chirp sequence. output dimension: (nt x nchirps)
+    WSeqTime = fct.get_seqtime(wdata.time, ChirpDuration_W, nchirps)
+    GSeqTime = fct.get_seqtime(gdata.time, ChirpDuration_G, nchirps)
     
-    if slant != False:
-        print('applying slant factor.')
     
-    if write == True:
-        attcum.to_netcdf('./attenuation.nc')
+    wdata = wdata.assign(chirpreptime = (['nchirp'], ChirpRepTime_W), chirpduration = ([ 'nchirp'], ChirpDuration_W), chirpseqtime = (['time', 'nchirp'], WSeqTime))
+    gdata = gdata.assign(chirpreptime = (['nchirp'], ChirpRepTime_G), chirpduration = ([ 'nchirp'], ChirpDuration_G), chirpseqtime = (['time', 'nchirp'], GSeqTime))
     
-    return attcum
+    
+    
+    #now do range matching ================
+    ### todo: get the modes from level before
+    #modes = ['average', 'average', 'average', 'nearest']
+    print('range matching...')
+    wgrangematch = fct.range_matching(wdata, gdata, info['level1settings']['mode'])
+    
+    #now do time matching and also calculate DFR and DDV ===================
+    wgtimematch = fct.time_matching(wgrangematch, wdata, gdata)
+    
+    #create level1 xarray dataset:
+    level1 = fct.create_dataset(wgtimematch, wdata, gdata, info, write=write)
+    
+    
+    #flagging: all DFR with timeshift larger than 1 second is nan:
+    level1.DFR.values[level1.timeshift.values > 1] = np.nan
+    
+    return level1
+
+
+def quicklooks(l1, info, write=False):
+    
+    
+    return

@@ -2,7 +2,7 @@ import numpy as np
 import xarray as xr
 import datetime as dt
 
-from watervapor.src import wvfcts as wvfct
+from level3.watervapor.src import wvfcts as wvfct
 
 import pandas as pd
 
