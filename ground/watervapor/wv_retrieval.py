@@ -30,7 +30,12 @@ def run_retrieval_ground(radar, thermo, lut, info, write=False):
     #get differential kappa from LUT based on thermo set of temperature and pressure, output unit: kg m**-2
     diffkappa = wvfct.get_kappa_from_lut(thermoradar.temp, thermoradar.pres, lut)
     
-    
+    print('preparing Ze and DAR with quality control')
+    #set Ze and Ze2 and DAR to nan where respective SNR is below threshold
+    radar['GZe'][radar['snr'] < info['watervaporsettings']['SNRthresh']] = np.nan
+    radar['G2Ze'][radar['snr2'] < info['watervaporsettings']['SNRthresh']] = np.nan
+    radar['DAR'][(radar['snr'] < info['watervaporsettings']['SNRthresh']) or (radar['snr2'] < info['watervaporsettings']['SNRthresh'])] = np.nan
+
     #loop through different R, calculate output profile and save output
     for R in np.asarray([info['watervaporsettings']['R']],dtype=int):
         print('WV retrieval...calculating gamma and retrieving with R=%i'%R)
@@ -53,7 +58,7 @@ def run_retrieval_ground(radar, thermo, lut, info, write=False):
         
         #filter obtained profiles by how many range gates were averaged together; ie set all profile output to nan where nranges is smaller than minnranges given in info json
         wvxrds.rhov.values[:,np.where(wvxrds.nranges < int(info['watervaporsettings']['minNranges']))] = np.nan
-        print('add snr filter here')
+        
 
         #interpolate in height and time and smooth:
         print('resampling on %s time interval by taking mean of window...'%info['watervaporsettings']['tavg'])
