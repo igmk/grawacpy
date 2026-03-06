@@ -172,7 +172,7 @@ def read_compactfiles(indatafiles, inhkfiles, inspfiles, info, instrumentname, w
     unix_epoch = np.datetime64(0,"s")
     one_second = np.timedelta64(1,"s")
     time = (indata.time.values - unix_epoch) / one_second
-    print('TODO:check in compact processing whether the time dimension already includes the microseconds stored in the sampletms variable')
+    
     
     #get variables, Ze in linear units; and set -999 to nan:
     Ze = srcfct.get_zlin(indata.ze.values) #radar reflectivity
