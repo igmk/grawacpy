@@ -81,14 +81,14 @@ if info['global']['quicklooks'] == True:
 
 
 # ============= add GPS data ==========================
-gps = xr.open_dataset(info['paths']['gps']+'%s_*_GPS_INS_%s%s%s_*.nc'%(info['global']['mission'], yy, mm, dd))
+gps = xr.open_dataset(glob.glob(info['paths']['gps']+'%s_*_GPS_INS_%s%s%s_*.nc'%(info['global']['mission'], yyyy, mm, dd))[0])
 flightspecs = gps.interp(time=l2data.time)
 
 theta = 25. #inclination angle bellypod
 incangle = -1*(flightspecs.pitch - theta)
 
 #assign auxiliary gps and position data to l2dataset:
-l2data = l2data.assign(incangle=incangle, lon=flightspecs.lon, lat=flightspecs.lat, alt=flightspecs.alt, flightspecs.pitch, flightspecs['roll'])
+l2data = l2data.assign(incangle=incangle, lon=flightspecs['lon'], lat=flightspecs['lat'], alt=flightspecs['alt'], pitch=flightspecs['pitch'], roll=flightspecs['roll'])
 
 
 # ===================================================== Level - 3a: attenuation correction
