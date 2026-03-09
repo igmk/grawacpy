@@ -79,19 +79,22 @@ l2data = l2.run(grawacl1data, wbandl1data, info, write=True)
 if info['global']['quicklooks'] == True:
     l2.quicklooks(l2data, info, write=True)
 
+# ===================================================== Level - 3a: attenuation correction ======
 
-# ============= add GPS data ==========================
+# add GPS information to level-2 dataset ==========================
 gps = xr.open_dataset(glob.glob(info['paths']['gps']+'%s_*_GPS_INS_%s%s%s_*.nc'%(info['global']['mission'], yyyy, mm, dd))[0])
 flightspecs = gps.interp(time=l2data.time)
 
 theta = 25. #inclination angle bellypod
 incangle = -1*(flightspecs.pitch - theta)
 
+#calculate height [m asl] of each radar range bin:
+radarhgt = l2data.alt - l2data.range*np.cos(np.radians(l2data.incangle))
+radarhgt.units = 'm asl'
+radarhgt.long_name = 'Height asl of each radar range bin'
+
 #assign auxiliary gps and position data to l2dataset:
-l2data = l2data.assign(incangle=incangle, lon=flightspecs['lon'], lat=flightspecs['lat'], alt=flightspecs['alt'], pitch=flightspecs['pitch'], roll=flightspecs['roll'])
-
-
-# ===================================================== Level - 3a: attenuation correction
+l2data = l2data.assign(incangle=incangle, lon=flightspecs['lon'], lat=flightspecs['lat'], alt=flightspecs['alt'], pitch=flightspecs['pitch'], roll=flightspecs['roll'], height=radarhgt)
 
 #attenuation: ================================
 # include a check whether attenuation is there already; if not: run the code to produce output in designated file
@@ -106,9 +109,9 @@ attfiles = sorted(glob.glob(attpath + '%s/%s/%s/%s_*_attenuation.nc'%(yyyy,mm,dd
 #print(attfiles)
 
 geometry = 'td' #bu: bottom-up; td: top-down
-slant = False #False can be entered for zenith/nadir; otherwise, enter the angle / deg.
+slant = True #False can be entered for zenith/nadir; otherwise, enter the angle / deg.
 
-att = l3a.attenuation_correction(attfiles, geometry, slant, info, write=False)
+att = l3a.attenuation_correction(attfiles, geometry, l2data, info, write=False)
 
 l3adata = l3a.run(l2data, att, info, write=True)
 

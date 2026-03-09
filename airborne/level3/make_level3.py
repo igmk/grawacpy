@@ -83,28 +83,37 @@ def attenuation_correction(attfiles, geometry, slant, info, write=False):
     
     #convert launchtime coordinate to datetime:
     nt = attcum.launchtime.shape[0]
-    attcum = attcum.assign_coords( launchtime=np.asarray([dt.datetime.strptime(str(attrs.launchtime.values[t]), '%Y%m%d%H%M') for t in range(nt)],dtype=object))
+    attcum = attcum.assign_coords(launchtime=np.asarray([dt.datetime.strptime(str(attrs.launchtime.values[t]), '%Y%m%d%H%M') for t in range(nt)],dtype=object))
     
     #and rename the variable to time:
     attcum = attcum.rename({'launchtime':'time'})
     
     if geometry == 'bu':
         attcum.Att_atmo.values = 2*attrs.Att_atmo.cumsum(dim='height').values
+    
     elif geometry == 'td':
+        '''
+        for airborne configuration. 
+        todo:
+        - top-down accumulation
+        - add fake attenuation profiles at beginning and end of flight to have attenuation correction for the whole flight.
+        (by cloning first and last dropsonde)
+        '''
         print('top-down attenuation correction...')
-        #attcum.Att_atmo.values = 2*attrs.Att_atmo.cumsum(dim='height').values
         
-        slantfactor = np.cos(np.radians(l1.incangle))  #define it as a factor, thus slantpath = radarhgt/cos(angle)
-        radarhgt = l1.alt - l1.range*slantfactor
-        attinter = xratt.interp(time=l1timedt, height=radarhgt) * 1/slantfactor
+        #duplicate first and last dropsonde for first/last radar timestamp:
 
+        #account for slant factor:
+        slantfactor = np.cos(np.radians(l2data.incangle))
+        attcum.Att_atmo.values = attcum.Att_atmo.values*1/slantfactor
+        
+        #accumulate top-down. 
+        attcum.Att_atmo.values = 2*attrs.Att_atmo[::-1].cumsum(dim='height').values
+        
         1/0
     else:
         print('geometry not specified. returning.')
         return
-    
-    if slant != False:
-        print('applying slant factor.')
     
     if write == True:
         attcum.to_netcdf(info['paths']['output']+'attenuation.nc')
