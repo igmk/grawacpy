@@ -64,7 +64,7 @@ def run(level2, att, info, write=False):
 
 
 
-def attenuation_correction(attfiles, geometry, slant, info, write=False):
+def attenuation_correction(attfiles, geometry, l2data, info, write=False):
     '''
     gas attenuation function. provides 
     attfiles: files with calculated gas attenuation
@@ -92,12 +92,15 @@ def attenuation_correction(attfiles, geometry, slant, info, write=False):
         print('bottom-up attenuation correction...')
         attcum.Att_atmo.values = 2*attrs.Att_atmo.cumsum(dim='height').values
     elif geometry == 'td':
+        '''
+        for airborne configuration. 
+        '''
         print('top-down attenuation correction...')
         #attcum.Att_atmo.values = 2*attrs.Att_atmo.cumsum(dim='height').values
         
-        slantfactor = np.cos(np.radians(l1.incangle))  #define it as a factor, thus slantpath = radarhgt/cos(angle)
-        radarhgt = l1.alt - l1.range*slantfactor
-        attinter = xratt.interp(time=l1timedt, height=radarhgt) * 1/slantfactor
+        slantfactor = np.cos(np.radians(l2data.incangle))  #define it as a factor, thus slantpath = radarhgt/cos(angle)
+        radarhgt = l2data.alt - l2data.range*slantfactor
+        attinter = xratt.interp(time=l2data.time, height=l2data.height) * 1/slantfactor
 
         1/0
 
