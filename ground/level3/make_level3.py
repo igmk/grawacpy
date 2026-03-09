@@ -64,7 +64,7 @@ def run(level2, att, info, write=False):
 
 
 
-def attenuation_correction(attfiles, geometry, l2data, info, write=False):
+def attenuation_correction(attfiles, geometry, slant, info, write=False):
     '''
     gas attenuation function. provides 
     attfiles: files with calculated gas attenuation
