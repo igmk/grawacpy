@@ -89,17 +89,22 @@ def attenuation_correction(attfiles, geometry, slant, info, write=False):
     attcum = attcum.rename({'launchtime':'time'})
     
     if geometry == 'bu':
+        print('bottom-up attenuation correction...')
         attcum.Att_atmo.values = 2*attrs.Att_atmo.cumsum(dim='height').values
     elif geometry == 'td':
-        print('check calculation.')
-        attcum.Att_atmo.values = 2*attrs.Att_atmo.cumsum(dim='height').values
+        print('top-down attenuation correction...')
+        #attcum.Att_atmo.values = 2*attrs.Att_atmo.cumsum(dim='height').values
+        
+        slantfactor = np.cos(np.radians(l1.incangle))  #define it as a factor, thus slantpath = radarhgt/cos(angle)
+        radarhgt = l1.alt - l1.range*slantfactor
+        attinter = xratt.interp(time=l1timedt, height=radarhgt) * 1/slantfactor
+
         1/0
+
     else:
         print('geometry not specified. returning.')
         return
     
-    if slant != False:
-        print('applying slant factor.')
     
     if write == True:
         attcum.to_netcdf(info['paths']['output']+'attenuation.nc')
