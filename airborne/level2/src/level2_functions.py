@@ -122,15 +122,15 @@ def range_matching(wdata, gdata, modes):
     
     coords = {'gtime':(['gtime'], gdata.time.values, {'units':'UTC', 'long_name':'Grawac time'}),
               'wtime':(['wtime'], wdata.time.values, {'units':'UTC', 'long_name':'Wband time'}),
-              'l2height':(['l2height'], gdata.height.values, {'units':'m', 'long_name':'Level-2 height, same as level1 gband height'}),
+              'l2range':(['l2range'], gdata.height.values, {'units':'m', 'long_name':'Level-2 height, same as level1 gband height'}),
               'modes':(['modes'], modes, {'long_name':'mode chosen for each chirp sequence for range matching'})
              }
     
     data_vars = { 
-    'WZe' : (['wtime','l2height'], WZematched, {'units': 'mm6 m-3', 'long_name':'Wband radar reflectivity Ze matched to Gband range'}),
-    'GZe' : (['gtime','l2height'], gdata.Ze.values, {'units': 'mm6 m-3', 'long_name':'Gband Ze'}),
-    'Wvd' : (['wtime','l2height'], Wvdmatched, {'units': 'ms-1', 'long_name':'Wband mean Doppler velocity vd matched to Gband range'}),
-    'Gvd' : (['gtime','l2height'], gdata.vd.values, {'units': 'ms-1', 'long_name':'Gband vd'}),
+    'WZe' : (['wtime','l2range'], WZematched, {'units': 'mm6 m-3', 'long_name':'Wband radar reflectivity Ze matched to Gband range'}),
+    'GZe' : (['gtime','l2range'], gdata.Ze.values, {'units': 'mm6 m-3', 'long_name':'Gband Ze'}),
+    'Wvd' : (['wtime','l2range'], Wvdmatched, {'units': 'ms-1', 'long_name':'Wband mean Doppler velocity vd matched to Gband range'}),
+    'Gvd' : (['gtime','l2range'], gdata.vd.values, {'units': 'ms-1', 'long_name':'Gband vd'}),
     }
     
     
@@ -268,7 +268,7 @@ def time_matching(WGrangematch, wdata, gdata):
     '''
     nchirps = wdata.nchirp.shape[0]
     nt = WGrangematch.gtime.shape[0]
-    nz = WGrangematch.l2height.shape[0]
+    nz = WGrangematch.l2range.shape[0]
     
     #calculate a timestampe giving out the time in the middle of each chirp sequence. output dimension: (nt x nchirps)
     WSeqTime = get_seqtime(wdata.time.values, wdata.chirpduration.values, nchirps)
@@ -320,18 +320,18 @@ def time_matching(WGrangematch, wdata, gdata):
     
     #output: xarray dataset with coordinates Wtime, Gtime, l1height (means here G-height)
     coords = {'l2time':(['l2time'], gdata.time.values, {'units':'UTC', 'long_name':'Grawac time'}),
-              'l2height':(['l2height'], gdata.height.values, {'units':'m', 'long_name':'Level-1 height, same as level1 gband height'})
+              'l2range':(['l2range'], gdata.height.values, {'units':'m', 'long_name':'Level-2 range, same as level2 gband range'})
               #'nchirp':(['nchirp'], np.arange(nchirps))
              }
     
     data_vars = { 
-    'WZe' : (['l2time','l2height'], WZematched, {'units': 'mm6 m-3', 'long_name':'Wband radar reflectivity Ze matched to Gband range and time'}),
-    'GZe' : (['l2time','l2height'], gdata.Ze.values, {'units': 'mm6 m-3', 'long_name':'Gband Ze at 167.3 GHz'}),
-    'Wvd' : (['l2time','l2height'], Wvdmatched, {'units': 'ms-1', 'long_name':'Wband mean Doppler velocity vd matched to Gband range and time'}),
-    'Gvd' : (['l2time','l2height'], gdata.vd.values, {'units': 'ms-1', 'long_name':'Gband vd at 167.3GHz'}),
-    'timeshift': (['l2time','l2height'], timeshiftout, {'units': 's', 'long_name':'Time shift of Wband radar compared to Gband sequence times'}),
-    'DFR' : (['l2time','l2height'], DFR, {'units': '-', 'long_name':'Dual-Frequency Ratio DFR Wband/Gband'}),
-    'DDV' : (['l2time','l2height'], DDV, {'units': '-', 'long_name':'Dual-Doppler Velocity DDV Wband/Gband'})
+    'WZe' : (['l2time','l2range'], WZematched, {'units': 'mm6 m-3', 'long_name':'Wband radar reflectivity Ze matched to Gband range and time'}),
+    'GZe' : (['l2time','l2range'], gdata.Ze.values, {'units': 'mm6 m-3', 'long_name':'Gband Ze at 167.3 GHz'}),
+    'Wvd' : (['l2time','l2range'], Wvdmatched, {'units': 'ms-1', 'long_name':'Wband mean Doppler velocity vd matched to Gband range and time'}),
+    'Gvd' : (['l2time','l2range'], gdata.vd.values, {'units': 'ms-1', 'long_name':'Gband vd at 167.3GHz'}),
+    'timeshift': (['l2time','l2range'], timeshiftout, {'units': 's', 'long_name':'Time shift of Wband radar compared to Gband sequence times'}),
+    'DFR' : (['l2time','l2range'], DFR, {'units': '-', 'long_name':'Dual-Frequency Ratio DFR Wband/Gband'}),
+    'DDV' : (['l2time','l2range'], DDV, {'units': '-', 'long_name':'Dual-Doppler Velocity DDV Wband/Gband'})
     }
     
     
@@ -358,22 +358,22 @@ def create_dataset(wgtimematch, wdata, gdata, info, write=False):
     '''
     
     coords = {'time':(['time'], wgtimematch.l2time.values, {'units':'seconds since 1/1/1970', 'long_name':'time'}),
-              'height':(['height'], wgtimematch.l2height.values, {'units':'m', 'long_name':'height asl (range+instrumentaltitude)'}),
+              'range':(['range'], wgtimematch.l2range.values, {'units':'m', 'long_name':'level-2 range (=level-1 grawac range)'}),
               'nchirp':(['nchirp'], wdata.nchirp.values, {'long_name':'chirp sequences'})
              }
     
     data_vars = { 
-    'WZe' : (['time','height'], wgtimematch.WZe.values, {'units': 'mm6 m-3', 'long_name':'Ze at 94GHz'}),
-    'GZe' : (['time','height'], wgtimematch.GZe.values, {'units': 'mm6 m-3', 'long_name':'Ze at 167.3 GHz'}),
-    'G2Ze' : (['time','height'], gdata.Ze2.values, {'units': 'mm6 m-3', 'long_name':'Ze at 174.7 GHz'}),
-    'DAR' : (['time','height'], gdata.DAR.values, {'units': 'dB', 'long_name':'Differential Absorption Radar Dual-Frequency Ratio 167-175'}),
-    'DFR' : (['time','height'], wgtimematch.DFR.values, {'units': 'dB', 'long_name':'Dual-Frequency Ratio DFR W-G'}),
-    'Wvd' : (['time','height'], wgtimematch.Wvd.values, {'units': 'ms-1', 'long_name':'mean Doppler velocity vd at 94GHz'}),
-    'Gvd' : (['time','height'], wgtimematch.Gvd.values, {'units': 'ms-1', 'long_name':'mean Doppler velocity vd at 167GHz'}),
-    'DDV' : (['time','height'], wgtimematch.DDV.values, {'units': '-', 'long_name':'Dual-Doppler Velocity DDV W-G'}),
-    'timeshift': (['time','height'], wgtimematch.timeshift.values, {'units': 's', 'long_name':'Time shift of Wband radar compared to Gband sequence times'}),
+    'WZe' : (['time','range'], wgtimematch.WZe.values, {'units': 'mm6 m-3', 'long_name':'Ze at 94GHz'}),
+    'GZe' : (['time','range'], wgtimematch.GZe.values, {'units': 'mm6 m-3', 'long_name':'Ze at 167.3 GHz'}),
+    'G2Ze' : (['time','range'], gdata.Ze2.values, {'units': 'mm6 m-3', 'long_name':'Ze at 174.7 GHz'}),
+    'DAR' : (['time','range'], gdata.DAR.values, {'units': 'dB', 'long_name':'Differential Absorption Radar Dual-Frequency Ratio 167-175'}),
+    'DFR' : (['time','range'], wgtimematch.DFR.values, {'units': 'dB', 'long_name':'Dual-Frequency Ratio DFR W-G'}),
+    'Wvd' : (['time','range'], wgtimematch.Wvd.values, {'units': 'ms-1', 'long_name':'mean Doppler velocity vd at 94GHz'}),
+    'Gvd' : (['time','range'], wgtimematch.Gvd.values, {'units': 'ms-1', 'long_name':'mean Doppler velocity vd at 167GHz'}),
+    'DDV' : (['time','range'], wgtimematch.DDV.values, {'units': '-', 'long_name':'Dual-Doppler Velocity DDV W-G'}),
+    'timeshift': (['time','range'], wgtimematch.timeshift.values, {'units': 's', 'long_name':'Time shift of Wband radar compared to Gband sequence times'}),
     'Gchirpidx': (['nchirp'], np.asarray(gdata.chirpseq_startix.values, dtype=int), {'units': '-', 'long_name':'Chirp sequence start index in height dimension'}),
-    'SNRG' : (['time','height'], gdata.SNR.values, {'units': 'dB', 'long_name':'SNR at 167.3'}),
+    'SNRG' : (['time','range'], gdata.SNR.values, {'units': 'dB', 'long_name':'SNR at 167.3'}),
     #'SNRG2' : (['time','height'], gdata.SNR2.values, {'units': 'dB', 'long_name':'SNR at 174.7'}) #include once part of matlab processing
     }
     
