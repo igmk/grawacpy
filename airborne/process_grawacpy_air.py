@@ -5,7 +5,7 @@ processing routine to run airborne processor
 import glob
 import sys
 import xarray as xr
-
+import numpy as np
 #import all submodules
 from level2 import make_level2 as l2
 from level3 import make_level3 as l3a
@@ -55,8 +55,7 @@ info['watervaporsettings']['tavg'] = '%ss'%tt
 # ===================================================== Level - 1: read matlab output
 print('processing %s, %s%s%s with water vapor retrieval on R=%sm and tavg=%s'%(info['global']['mission'], yyyy, mm, dd, info['watervaporsettings']['R'], info['watervaporsettings']['tavg']))
 
-print('reading level-1 files....')
-print('loading Gband files....')
+print('Level-2....loading G-band')
 #gdatafiles = sorted(glob.glob(info['paths']['grawac'] +'%s/%s/%s/'%(yyyy,mm,dd) +'grawac_%s%s%s_*_%s_ZEN.lv1.NC'%(yyyy, mm, dd, info['paths']['grawacchirpprogram'])))
 gdatafiles  = sorted(glob.glob(info['paths']['grawac']+'%s/%s/%s/'%(yyyy,mm,dd) + 'grawac_p6_lv1a_%s%s%s*_%s.nc'%(yy, mm, dd, info['paths']['grawacchirpprogram'])))
 ghkfiles = sorted(glob.glob(info['paths']['grawac']+'%s/%s/%s/'%(yyyy,mm,dd) + 'grawac_p6_housekeep_lv1a_%s%s%s*_%s.nc'%(yy, mm, dd, info['paths']['grawacchirpprogram'])))
@@ -67,34 +66,38 @@ gspfiles = sorted(glob.glob(info['paths']['grawac']+'%s/%s/%s/'%(yyyy,mm,dd) + '
 grawacl1data = importfct.read_compactfiles(gdatafiles, ghkfiles, gspfiles, info, 'GRaWAC', withdar=True, write=True)
 
 
-print('loading Wband files....')
-wdatafiles  = sorted(glob.glob(info['paths']['wband']+'%s/%s/%s/'%(yyyy,mm,dd) + 'mirac_p6_lv1a_%s%s%s*_%s.nc'%(yy, mm, dd, info['paths']['miracchirpprogram'])))
-whkfiles = sorted(glob.glob(info['paths']['wband']+'%s/%s/%s/'%(yyyy,mm,dd) + 'mirac_p6_housekeep_lv1a_%s%s%s*_%s.nc'%(yy, mm, dd, info['paths']['miracchirpprogram'])))
-wspfiles = sorted(glob.glob(info['paths']['wband']+'%s/%s/%s/'%(yyyy,mm,dd) + 'mirac_p6_spectra_lv1a_%s%s%s*_%s.nc'%(yy, mm, dd, info['paths']['miracchirpprogram'])))
+print('Level-2....loading W-band')
+wdatafiles  = sorted(glob.glob(info['paths']['wband']+'%s/%s/%s/'%(yyyy,mm,dd) + 'mirac-a_pl6_lv1a_%s%s%s*_%s.nc'%(yy, mm, dd, info['paths']['miracchirpprogram'])))
+whkfiles = sorted(glob.glob(info['paths']['wband']+'%s/%s/%s/'%(yyyy,mm,dd) + 'mirac-a_pl6_housekeep_lv1a_%s%s%s*_%s.nc'%(yy, mm, dd, info['paths']['miracchirpprogram'])))
+wspfiles = sorted(glob.glob(info['paths']['wband']+'%s/%s/%s/'%(yyyy,mm,dd) + 'mirac-a_pl6_spectra_lv1a_%s%s%s*_%s.nc'%(yy, mm, dd, info['paths']['miracchirpprogram'])))
 wbandl1data = importfct.read_compactfiles(wdatafiles, whkfiles, wspfiles, info, 'MIRAC', withdar = False, write=True)
 
 # ===================================================== Level - 2: dual-frequency matching
+print('Level-2....writing')
 l2data = l2.run(grawacl1data, wbandl1data, info, write=True)
 
 if info['global']['quicklooks'] == True:
     l2.quicklooks(l2data, info, write=True)
-
+print('Level-2....done\n --------------\n')
 # ===================================================== Level - 3a: attenuation correction ======
-
+print('Level-3....loading GPS')
 # add GPS information to level-2 dataset ==========================
 gps = xr.open_dataset(glob.glob(info['paths']['gps']+'%s_*_GPS_INS_%s%s%s_*.nc'%(info['global']['mission'], yyyy, mm, dd))[0])
 flightspecs = gps.interp(time=l2data.time)
+#add these to l2dataset:
+l2data = l2data.assign(lon=flightspecs['lon'], lat=flightspecs['lat'], alt=flightspecs['alt'], pitch=flightspecs['pitch'], roll=flightspecs['roll'])
 
+#now calculate inclination angle and aircraft height
 theta = 25. #inclination angle bellypod
 incangle = -1*(flightspecs.pitch - theta)
 
 #calculate height [m asl] of each radar range bin:
-radarhgt = l2data.alt - l2data.range*np.cos(np.radians(l2data.incangle))
-radarhgt.units = 'm asl'
-radarhgt.long_name = 'Height asl of each radar range bin'
+radarhgt = l2data.alt - l2data.range*np.cos(np.radians(incangle))
+radarhgt.attrs['units'] = 'm asl'
+radarhgt.attrs['long_name'] = 'Height asl of each radar range bin'
 
 #assign auxiliary gps and position data to l2dataset:
-l2data = l2data.assign(incangle=incangle, lon=flightspecs['lon'], lat=flightspecs['lat'], alt=flightspecs['alt'], pitch=flightspecs['pitch'], roll=flightspecs['roll'], height=radarhgt)
+l2data = l2data.assign(height=radarhgt, incangle=incangle)
 
 #attenuation: ================================
 # include a check whether attenuation is there already; if not: run the code to produce output in designated file
@@ -102,7 +105,7 @@ l2data = l2data.assign(incangle=incangle, lon=flightspecs['lon'], lat=flightspec
 #    run attenuation
 #else:
 #    attenuation = load attenuation files
-
+print('Level-3....loading attenuation')
 attpath = info['paths']['attenuation']
 #load all profiles for all campaign duration (for post-processing); this needs to be changed for day-to-day processing!
 attfiles = sorted(glob.glob(attpath + '%s/%s/%s/%s_*_attenuation.nc'%(yyyy,mm,dd,info['global']['mission']))) #files with gas attenuation calculated for each sonde profile
@@ -116,6 +119,7 @@ att = l3a.attenuation_correction(attfiles, geometry, l2data, info, write=False)
 l3adata = l3a.run(l2data, att, info, write=True)
 
 # ===================================================== Level - 3b: water vapor retrieval
+print('Level-3....water vapor retrieval')
 thermo = xr.open_dataset(info['paths']['thermo'])
 lut = xr.open_dataset(info['paths']['lut'])
 
