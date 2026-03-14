@@ -356,8 +356,9 @@ def create_dataset(wgtimematch, wdata, gdata, info, write=False):
     output:
     - level2: level2 dataset dual-frequency time and range matched.
     '''
-    
-    coords = {'time':(['time'], wgtimematch.l2time.values, {'units':'seconds since 1/1/1970', 'long_name':'time'}),
+    l2dttime = np.array([dt.datetime.utcfromtimestamp(wgtimematch.l2time.values[i]) for i in range(len(wgtimematch.l2time.values)
+)])
+    coords = {'time':(['time'], l2dttime),
               'range':(['range'], wgtimematch.l2range.values, {'units':'m', 'long_name':'level-2 range (=level-1 grawac range)'}),
               'nchirp':(['nchirp'], wdata.nchirp.values, {'long_name':'chirp sequences'})
              }
