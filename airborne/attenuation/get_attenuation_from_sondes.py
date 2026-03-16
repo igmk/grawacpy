@@ -93,9 +93,10 @@ def interpolate_era5_to_radarheight(eraxr, gheight):
 
 def save_output_to_nc(pam, freqs, attrs, ncout, write = False):
     
+    launchtime = int(attrs['sonde_launch_time'])
     
     data_vars = {
-        'Att_atmo':(['height','freq'], pam.r['Att_atmo'][0,0,:,:], {'units':'dB', 'long_name': 'atmospheric attenuation profile'}),
+        'Att_atmo':(['launchtime','height','freq'], np.expand_dims(pam.r['Att_atmo'][0,0,:,:], axis=0), {'units':'dB', 'long_name': 'atmospheric attenuation profile'}),
         'relh':(['height'], pam.p['relhum'][0,0,:], {'units':'', 'long_name':'layer relative humidity'}),
         'p':(['height'], pam.p['press'][0,0,:]/100, {'units':'hPa', 'long_name':'layer pressure'}),
         'temp':(['height'], pam.p['temp'][0,0,:], {'units':'K', 'long_name':'layer temperature'})
@@ -104,7 +105,8 @@ def save_output_to_nc(pam, freqs, attrs, ncout, write = False):
     
     coords = {
         'freq':(['freq'], freqs, {'units':'GHz', 'long_name':'simulated radar frequency'}),
-        'height':(['height'], pam.p['hgt'][0,0,:], {'units':'m', 'long_name':'layer height above msl'}),}
+        'height':(['height'], pam.p['hgt'][0,0,:], {'units':'m', 'long_name':'layer height above msl'}),
+        'launchtime':(['launchtime'], [launchtime], {'units':'UTC', 'long_name':'sonde launch time UTC'})}
     
     attrs['creation_time'] = dt.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')
     #attrs = attrs
@@ -234,7 +236,7 @@ def run(info):
         #prepare output and write to netcdf:
         attrs = info['attrs']['attenuation']
         attrs['sonde_launch_time'] = '%s'%np.datetime_as_string(sondexr.launch_time.values, unit='s')
-        print('add sondetimestamp as coordinate to file')
+        print('add sondetimestamp as coordinate to file, and add a time dimension to Att_atmo variable to concatenate on later.')
         1/0
         ncoutfile = info['paths']['attenuation'] + '%s/%s/%s/'%(info['global']['yyyy'], info['global']['mm'], info['global']['dd']) + info['global']['mission'] + '_'+ info['global']['RF'] + '_sonde0%i_attenuation.nc'%(n+1)
         print('saving output to %s'%ncoutfile)
