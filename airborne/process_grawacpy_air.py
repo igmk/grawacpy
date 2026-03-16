@@ -107,8 +107,17 @@ l2data = l2data.assign(height=radarhgt, incangle=incangle)
 #    attenuation = load attenuation files
 print('Level-3....loading attenuation')
 attpath = info['paths']['attenuation']
-#load all profiles for all campaign duration (for post-processing); this needs to be changed for day-to-day processing!
 attfiles = sorted(glob.glob(attpath + '%s/%s/%s/%s_*_attenuation.nc'%(yyyy,mm,dd,info['global']['mission']))) #files with gas attenuation calculated for each sonde profile
+
+#check if attenuation profiles are available; if yes, read them and keep going; if no: run attenuation script to produce output
+#if len(attfiles) < 1:
+if 1 == 1:
+    from attenuation import get_attenuation_from_sondes as att
+    att.run(info)
+    #find files again, and check that they got saved.
+    attfiles = sorted(glob.glob(attpath + '%s/%s/%s/%s_*_attenuation.nc'%(yyyy,mm,dd,info['global']['mission']))) #files with gas attenuation calculated for each sonde profile
+    assert len(attfiles) > 0
+#load all profiles for all campaign duration (for post-processing); this needs to be changed for day-to-day processing!
 #print(attfiles)
 
 geometry = 'td' #bu: bottom-up; td: top-down
