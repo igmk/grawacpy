@@ -93,8 +93,8 @@ def interpolate_era5_to_radarheight(eraxr, gheight):
 
 def save_output_to_nc(pam, freqs, attrs, ncout, write = False):
     
-    launchtime = int(attrs['sonde_launch_time'])
-    
+    launchtime = attrs['sonde_launch_time']
+
     data_vars = {
         'Att_atmo':(['launchtime','height','freq'], np.expand_dims(pam.r['Att_atmo'][0,0,:,:], axis=0), {'units':'dB', 'long_name': 'atmospheric attenuation profile'}),
         'relh':(['height'], pam.p['relhum'][0,0,:], {'units':'', 'long_name':'layer relative humidity'}),
@@ -170,7 +170,8 @@ def run(info):
         arbheightatt = arbheight.copy() #this one is the output one filled with nans later if necessary
         #read sounding:
         sondexr = xr.open_dataset(sondefiles[n])
-        
+        print('DS min height = %.2f, max height = %.2f'%(np.nanmin(sondexr.gpsalt.values), np.nanmax(sondexr.gpsalt.values)))
+
         adjustflag = 0 #flag indicating whether arbheight was adjusted for pamtra simulation
         #try interpolating sounding to output attenuation grid: 
         try:
@@ -196,26 +197,44 @@ def run(info):
         #still complement layer RH in sondeinter as ERA does not have rh_lev as variable:
         sondeinter['rh_lay'] = (sondeinter['rh'][1:] + sondeinter['rh'][:-1])/2.  #average two levels to one layer
         
+        
         #read matching ERA5 profile:
         eraxr = xr.open_dataset(erafiles[n])
         #interpolate ERA5 profile to arbheight height grid:
         erainter = interpolate_era5_to_radarheight(eraxr, arbheight)
         
+        #varpairs of ERA and sonde key:
         #varPairs = [['p', 'press'], ['p_lev', 'press_lev'], ['t', 'temp'], ['t_lev', 'temp_lev'], ['rh', 'relhum'], ['hgt_lev', 'hgt_lev']]
         varpairs = [['p_lev', 'pres'], ['t_lev', 'tdry'], ['rh', 'rh_lay']]
         
         #find last valid measurement in each pres, tdry; take ERA5 level measurements to complement the array:
         for erakey, sondekey in varpairs:
-            
+            #for i in range(57): print(sondeinter[sondekey][i])
             lastind = np.where(np.isnan(sondeinter[sondekey]))[0][0]
             print(erakey, sondekey, lastind)
             if lastind == 0:            
                 lastind = np.where((np.isnan(sondeinter[sondekey])) & (sondeinter['hgt'] > 1000))[0][0]
                 #print(lastind)
-                1/0
+                
             
             sondeinter[sondekey][lastind:] = erainter[erakey][lastind:]
         
+        #check that no nans are present in sondeinter before using it for pamtra:
+        for key in ['pres', 'tdry', 'rh_lay','hgt']:
+            if np.any(np.isnan(sondeinter[key])) == True:
+                #find where its nan, and set the value to the value of the index above:
+                nanind = np.where(np.isnan(sondeinter[key]))[0]
+                print('found %i nans in %s'%(len(nanind), key))
+                if len(nanind) > 0:
+                    for nanin in nanind:
+                        #print('nanin %i'%nanin)
+                        #print(sondeinter[key][nanin:nanin+2],np.nanmean(sondeinter[key][nanin:nanin+2]) )
+                        sondeinter[key][nanin] = np.nanmean(sondeinter[key][nanin:nanin+2])
+                        #print('value %.2f'%sondeinter[key][nanin])
+                #check that no more nan is present:
+                #print(np.any(np.isnan(sondeinter[key])))
+                assert np.any(np.isnan(sondeinter[key])) == False
+
         #prepare pamData dictionnary:
         # define levels:
         pamData['hgt_lev'] = sondeinter['hgt']
@@ -234,13 +253,25 @@ def run(info):
         pam.runParallelPamtra(radarfreq, pp_deltaX=1, pp_deltaY=1, pp_deltaF=1, pp_local_workers=8)
         
         #prepare output and write to netcdf:
-        attrs = info['attrs']['attenuation']
+        attrs = {
+        "title": "Gas attenuation profile calculated using PAMTRA on dropsonde profile",
+        "doi": "",
+        "campaign_id":info['global']['mission'],
+        "platform": info['global']['platform'],
+        "instrument": "dropsondes, PAMTRA",
+        "institution": "University of Cologne, Institute for Geophysics and Meteorology",
+        "product_id":"Level-3a",
+        "version":info['global']['version'],
+        "references": "AMT",
+        "author":"Sabrina Schnitt",
+        "author_email":"s.schnitt(at)uni-koeln.de",
+        'creation_time':dt.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')
+        }
         attrs['sonde_launch_time'] = '%s'%np.datetime_as_string(sondexr.launch_time.values, unit='s')
-        print('add sondetimestamp as coordinate to file, and add a time dimension to Att_atmo variable to concatenate on later.')
-        1/0
+        
         ncoutfile = info['paths']['attenuation'] + '%s/%s/%s/'%(info['global']['yyyy'], info['global']['mm'], info['global']['dd']) + info['global']['mission'] + '_'+ info['global']['RF'] + '_sonde0%i_attenuation.nc'%(n+1)
         print('saving output to %s'%ncoutfile)
-        
+        print(attrs['sonde_launch_time'])
         xrds = save_output_to_nc(pam, radarfreq, attrs, ncoutfile, write=True)
     
     return
