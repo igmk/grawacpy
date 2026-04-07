@@ -253,7 +253,7 @@ def read_compactfiles(indatafiles, inhkfiles, inspfiles, info, instrumentname, w
     print('creating dataset...')
 
     #create dataset:
-    exportvars = [Ze, vd, rheight, freq, navg, maxvel, time, nchirps, instrumentalt, chirpstartidx, snr, sl]
+    exportvars = [Ze, vd, rheight, freq, navg, maxvel, time, nchirps, instrumentalt, chirpstartidx, snr, sl, deltaZe]
     varnames = ['Ze', 'vd', 'rheight', 'freq', 'navg', 'maxvel', 'time', 'nchirps', 'instrumentalt', 'chirpstartidx', 'snr','sl', 'deltaZe']
     if withdar == True:
         exportvars.append(LDR)
