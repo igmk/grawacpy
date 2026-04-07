@@ -15,7 +15,7 @@ def make_dataset(dsvars, attrs, outfile, withdar =True, write=False):
     
     #datavars to include: ze, ldr, startidx, freq, 
     data_vars = { 
-    'Ze' : (['time','height'], dsvars['Ze'], {'units': 'mm6 m-3', 'long_name':'radar reflectivity Ze'}),
+    'Ze' : (['time','height'], dsvars['Ze'], {'units': 'mm6 m-3', 'long_name':'radar reflectivity Ze at 167.3GHz'}),
     'vd' : (['time','height'], dsvars['vd'], {'units': 'm s-1', 'long_name':'radar mean Doppler Velocity'}),
     'chirpseq_startix' : (['nchirp'], dsvars['chirpstartidx'], {'units': '-', 'long_name':'starting index in range array for where each chirp starts'}),
     'navg' : (['nchirp'], dsvars['navg'], {'units': '-', 'long_name':'number of chirps averaged.'}),
