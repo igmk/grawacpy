@@ -374,6 +374,7 @@ def create_dataset(wgtimematch, wdata, gdata, info, write=False):
     'timeshift': (['time','height'], wgtimematch.timeshift.values, {'units': 's', 'long_name':'Time shift of Wband radar compared to Gband sequence times'}),
     'Gchirpidx': (['nchirp'], np.asarray(gdata.chirpseq_startix.values, dtype=int), {'units': '-', 'long_name':'Chirp sequence start index in height dimension'}),
     'SNRG' : (['time','height'], gdata.SNR.values, {'units': 'dB', 'long_name':'SNR at 167.3'}),
+    'deltaZe': (['time','height'], gdata.deltaZe.values, {'units': 'dB', 'long_name':'Ze precision at 167.3 calculated using Battaglia and Kollias 2019 Eqn 13.'})
     #'SNRG2' : (['time','height'], gdata.SNR2.values, {'units': 'dB', 'long_name':'SNR at 174.7'}) #include once part of matlab processing
     }
     
