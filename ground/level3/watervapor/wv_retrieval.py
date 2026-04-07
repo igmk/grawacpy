@@ -42,10 +42,14 @@ def run_retrieval_ground(radar, thermo, lut, info, write=False):
     for R in np.asarray([info['watervaporsettings']['R']],dtype=int):
         print('WV retrieval...calculating gamma and retrieving with R=%i'%R)
         #get differential gamma calculated based on reflectivities, output unit: 1/m; also get number of averaged volumes per height level
-        diffgamma, nvolumes = wvfct.get_diffgamma(R, radar, outall=False)
+        diffgamma, nvolumes, deltaZerR = wvfct.get_diffgamma(R, radar, outall=False)
         
         #calculate profile based on differential gamma, and differential kappa
-        wvprof = np.divide(diffgamma, diffkappa)*1000.  #diffgamma units: 1/m ; diffkappa: kg m**-2 ; wvprof: g m**(-3)
+        wvprof = np.divide(diffgamma, diffkappa)*1000.  #diffgamma units: 1/m ; diffkappa: m**2 kg**-1 ; wvprof: g m**(-3)
+        
+        #calculate rhov uncertainty according to Battaglia and Kollias 2019 Eq 7; Roy et al 2018 Eqn 9
+        deltarhov = 1/(2 * R * diffkappa) * deltaZerR * 1000. #convert to g m-3
+
         
         #prepare variables to be stored in dataset:
         exportvars = [diffkappa, diffgamma, nvolumes, wvprof, R, radar.time.values, radar.height.values]
@@ -90,10 +94,3 @@ def run_retrieval_ground(radar, thermo, lut, info, write=False):
         
     return wvxrds, wvxrdssmooth
 
-
-def run_retrieval_air():
-    '''
-    idea: copy this from groundbased, add slant angle, iwv calculation etc.
-    '''
-    
-    return wvxrds

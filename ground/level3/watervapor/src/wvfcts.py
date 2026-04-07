@@ -95,6 +95,7 @@ def get_diffgamma(R, inradar, outall=False):
     gamma1 = [] #gamma is diff coefficient per each range gate and each time stamp
     gamma2 = []
     nvolumes = [] #number of radar volumes averaged to obtain R spacing
+    deltaZerR = [] #variance term (second term) for rhov uncertainty calculation
     
     nz = radar.height.shape[0]
     
@@ -121,13 +122,18 @@ def get_diffgamma(R, inradar, outall=False):
         #calculate gamma coefficient
         gamma1.append(1/(2*R) * np.log( radar.GZe.values[:,i]/radar.GZe.values[:,resiterated-1]))
         gamma2.append(1/(2*R) * np.log( radar.G2Ze.values[:,i]/radar.G2Ze.values[:,resiterated-1]))
+
+        #calculate second term with deltaZe at r and R for uncertainty calculation: (whole second term of Eqn 7 in Battaglia and Kollias 2019)
+        ## note that no deltaZe can be calculated for 175 so far (SW missing in software output), thus assume the same as in 167.
+        deltaZerR.append( np.sqrt( 2 * radar.deltaZe.values[:,i]**2  + 2 * radar.deltaZe.values[:,resiterated-1]**2))
+
         
-    
     gamma1 = np.asarray(gamma1).T
     gamma2 = np.asarray(gamma2).T
+    deltaZerR = np.asarray(deltaZerR).T
     
     diffgamma = gamma2 - gamma1
     
     #return swapped time and height dimensions
-    return diffgamma, nvolumes
+    return diffgamma, nvolumes, deltaZerR
 
