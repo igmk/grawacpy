@@ -3,6 +3,8 @@ import xarray as xr
 import datetime as dt
 
 from level3.watervapor.src import wvfcts as wvfct
+import importlib as imp
+imp.reload(wvfct)
 
 import pandas as pd
 
@@ -47,28 +49,29 @@ def run_retrieval_ground(radar, thermo, lut, info, write=False):
         #calculate profile based on differential gamma, and differential kappa
         wvprof = np.divide(diffgamma, diffkappa)*1000.  #diffgamma units: 1/m ; diffkappa: m**2 kg**-1 ; wvprof: g m**(-3)
         
-        #calculate rhov uncertainty according to Battaglia and Kollias 2019 Eq 7; Roy et al 2018 Eqn 9
+        #calculate rhov uncertainty according to Battaglia and Kollias 2019 Eq 7; Roy et al 2018 Eqn 13
         deltarhov = 1/(2 * R * diffkappa) * deltaZerR * 1000. #convert to g m-3
+        
 
         
         #prepare variables to be stored in dataset:
-        exportvars = [diffkappa, diffgamma, nvolumes, wvprof, R, radar.time.values, radar.height.values]
-        varnames = ['diffkappa', 'diffgamma', 'nranges', 'rhov', 'R', 'time', 'height']
+        exportvars = [diffkappa, diffgamma, nvolumes, wvprof, R, radar.time.values, radar.height.values, deltarhov]
+        varnames = ['diffkappa', 'diffgamma', 'nranges', 'rhov', 'R', 'time', 'height', 'deltarhov']
         tods = {}
         for vv,var in enumerate(exportvars):
             tods[varnames[vv]] = var
-        
+
         #create dataset:
         attrs = radar.attrs.copy()
         wvxrds = wvfct.create_wv_dataset(tods, attrs)
-        
+
         #filter obtained profiles by how many range gates were averaged together; ie set all profile output to nan where nranges is smaller than minnranges given in info json
         wvxrds.rhov.values[:,np.where(wvxrds.nranges < int(info['watervaporsettings']['minNranges']))] = np.nan
-        
+
 
         #interpolate in height and time and smooth:
         print('resampling on %s time interval by taking mean of window...'%info['watervaporsettings']['tavg'])
-        
+
         wvxrdssmooth = wvxrds.resample(time='%s'%info['watervaporsettings']['tavg'],closed='right').mean() #put timestamp at end of averaging period to be consistent with radar time stamping (rpg puts timestamp at end of one measurement)
         
         print('smoothing output vertically on R=%i by using rolling mean'%R)
@@ -78,14 +81,14 @@ def run_retrieval_ground(radar, thermo, lut, info, write=False):
         #print('interpolating smoothing output to regular grid with R')
         #Rgrid = np.arange(0, 11000, R)
         #wvxrdssmooth = wvxrdssmooth.interp( height = Rgrid)
-
+        1/0
 
         #store to netcdf
         if write==True:
             
             #output of original profiles:
-            #ncfile = info['global']['mission'] +'_%s_level3b_watervapor_%s%s%s_R%i_tavg%s_original.nc'%(info['global']['version'], info['yyyy'], info['mm'], info['dd'], R, info['watervaporsettings']['tavg'])
-            #wvxrds.to_netcdf(info['paths']['output'] + ncfile)
+            ncfile = info['global']['mission'] +'_%s_level3b_watervapor_%s%s%s_R%i_tavg%s_original.nc'%(info['global']['version'], info['yyyy'], info['mm'], info['dd'], R, info['watervaporsettings']['tavg'])
+            wvxrds.to_netcdf(info['paths']['output'] + ncfile)
             
             #output of smoothed profiles:
             ncfile = info['global']['mission'] +'_%s_level3b_watervapor_%s%s%s_R%i_tavg%s.nc'%(info['global']['version'], info['yyyy'], info['mm'], info['dd'], R, info['watervaporsettings']['tavg'])

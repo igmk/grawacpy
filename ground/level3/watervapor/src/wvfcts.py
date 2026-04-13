@@ -26,6 +26,7 @@ def create_wv_dataset(dsvars, attrs):
     'rhov' : (['time','height'], dsvars['rhov'], {'units': 'g m-3', 'long_name':'absolute humidity profile retrieved from DAR measurements'}),
     'diffkappa' : (['time','height'], dsvars['diffkappa'], {'units': 'mm6 m-3', 'long_name':'radar reflectivity Ze'}),
     'diffgamma' : (['time','height'], dsvars['diffgamma'], {'units': 'm s-1', 'long_name':'radar mean Doppler Velocity'}),
+    'deltarhov' : (['time','height'], dsvars['deltarhov'], {'units': 'g m-3', 'long_name':'rhov uncertainty'}),
     'nranges' : (['height'], dsvars['nranges'], {'units': '-', 'long_name':'number of range bins that fit into R spacing'})
         }
     
@@ -125,8 +126,19 @@ def get_diffgamma(R, inradar, outall=False):
 
         #calculate second term with deltaZe at r and R for uncertainty calculation: (whole second term of Eqn 7 in Battaglia and Kollias 2019)
         ## note that no deltaZe can be calculated for 175 so far (SW missing in software output), thus assume the same as in 167.
-        deltaZerR.append( np.sqrt( 2 * radar.deltaZe.values[:,i]**2  + 2 * radar.deltaZe.values[:,resiterated-1]**2))
+        
+        #this one is for deltaZe in dB using Battaglia and Kollias Eq (7) - unclear in terms of units!!!
+        #deltaZerR.append( np.sqrt( 2 * radar.deltaZe.values[:,i]**2  + 2 * radar.deltaZe.values[:,resiterated-1]**2))
+        
+        #this one is the second term of Roy et al 2018 Eq (13)
+        #convert deltaZe (in dB) to linear mm6/m3 by dividing with 4.343 factor
+        sigmarhovterm2 =  np.sqrt( 
+            ((radar.deltaZe.values[:,i]/4.343) / radar.GZe.values[:,i] ) **2 + #deltaZe at r1 for 167
+            ((radar.deltaZe.values[:,i]/4.343) / radar.G2Ze.values[:,i] ) **2 + #assume same deltaZe for 174 at r1
+            ((radar.deltaZe.values[:,resiterated-1]/4.343) / radar.GZe.values[:,resiterated-1] ) **2 + #deltaZe at r2 for 167
+            ((radar.deltaZe.values[:,resiterated-1]/4.343) / radar.G2Ze.values[:,resiterated-1] ) **2 ) #assume same deltaZe for 174 at r2
 
+        deltaZerR.append(sigmarhovterm2)
         
     gamma1 = np.asarray(gamma1).T
     gamma2 = np.asarray(gamma2).T
