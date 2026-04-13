@@ -18,7 +18,8 @@ def create_wv_dataset(dsvars, attrs):
     '''
     coords = {'time':(['time'], dsvars['time']),
               'height':(['height'], dsvars['height'], {'units':'m', 'long_name':'Radar range gate height asl (radar range + instrument_altitude'}),
-              'R':(['R'], [dsvars['R']], {'units':'m', 'long_name':'retrieval vertical resolution'})
+              'R':(['R'], [dsvars['R']], {'units':'m', 'long_name':'retrieval vertical resolution'}),
+              '':(['tavg'], [dsvars['tavg']], {'units':'s', 'long_name':'retrieval averaging time'})
              }
     
     #datavars to include: ze, ldr, startidx, freq, 

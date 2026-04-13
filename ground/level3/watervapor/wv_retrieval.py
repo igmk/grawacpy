@@ -55,8 +55,9 @@ def run_retrieval_ground(radar, thermo, lut, info, write=False):
 
         
         #prepare variables to be stored in dataset:
-        exportvars = [diffkappa, diffgamma, nvolumes, wvprof, R, radar.time.values, radar.height.values, deltarhov]
-        varnames = ['diffkappa', 'diffgamma', 'nranges', 'rhov', 'R', 'time', 'height', 'deltarhov']
+        tavg = int(info['watervaporsettings']['tavg'].split('s')[0])
+        exportvars = [diffkappa, diffgamma, nvolumes, wvprof, R, radar.time.values, radar.height.values, deltarhov, tavg]
+        varnames = ['diffkappa', 'diffgamma', 'nranges', 'rhov', 'R', 'time', 'height', 'deltarhov','tavg']
         tods = {}
         for vv,var in enumerate(exportvars):
             tods[varnames[vv]] = var
@@ -67,7 +68,6 @@ def run_retrieval_ground(radar, thermo, lut, info, write=False):
 
         #filter obtained profiles by how many range gates were averaged together; ie set all profile output to nan where nranges is smaller than minnranges given in info json
         wvxrds.rhov.values[:,np.where(wvxrds.nranges < int(info['watervaporsettings']['minNranges']))] = np.nan
-
 
         #interpolate in height and time and smooth:
         print('resampling on %s time interval by taking mean of window...'%info['watervaporsettings']['tavg'])
@@ -81,7 +81,7 @@ def run_retrieval_ground(radar, thermo, lut, info, write=False):
         #print('interpolating smoothing output to regular grid with R')
         #Rgrid = np.arange(0, 11000, R)
         #wvxrdssmooth = wvxrdssmooth.interp( height = Rgrid)
-        1/0
+        
 
         #store to netcdf
         if write==True:
