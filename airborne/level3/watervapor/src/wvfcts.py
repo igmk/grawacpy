@@ -24,7 +24,8 @@ def create_wv_dataset(dsvars, attrs):
     '''
     coords = {'time':(['time'], dsvars['time']),
               'height':(['height'], dsvars['height'], {'units':'m', 'long_name':'Radar range gate height asl (radar range + instrument_altitude'}),
-              'R':(['R'], [dsvars['R']], {'units':'m', 'long_name':'retrieval vertical resolution'})
+              'R':(['R'], [dsvars['R']], {'units':'m', 'long_name':'retrieval vertical resolution'}),
+              'tavg':(['tavg'], [dsvars['tavg']], {'units':'s', 'long_name':'retrieval averaging time'})
              }
     
     #datavars to include: ze, ldr, startidx, freq, 
@@ -32,6 +33,7 @@ def create_wv_dataset(dsvars, attrs):
     'rhov' : (['time','height'], dsvars['rhov'], {'units': 'g m-3', 'long_name':'absolute humidity profile retrieved from DAR measurements'}),
     'diffkappa' : (['time','height'], dsvars['diffkappa'], {'units': 'mm6 m-3', 'long_name':'radar reflectivity Ze'}),
     'diffgamma' : (['time','height'], dsvars['diffgamma'], {'units': 'm s-1', 'long_name':'radar mean Doppler Velocity'}),
+    'deltarhov' : (['time','height'], dsvars['deltarhov'], {'units': 'g m-3', 'long_name':'rhov uncertainty'}),
     'nranges' : (['height'], dsvars['nranges'], {'units': '-', 'long_name':'number of range bins that fit into R spacing'})
         }
     
@@ -175,7 +177,7 @@ def get_diffgamma(R, inradar, outall=False):
     gamma1 = [] #gamma is diff coefficient per each range gate and each time stamp
     gamma2 = []
     nvolumes = [] #number of radar volumes averaged to obtain R spacing
-    
+    deltaZerR = [] #variance term (second term) for rhov uncertainty calculation
     nz = radar.height.shape[0]
     
     
@@ -192,7 +194,7 @@ def get_diffgamma(R, inradar, outall=False):
         
         resiterated = i
         
-        while radar.height.values[resiterated] - radar.height.values[i] < R and resiterated < nz-1:
+        while radar.range.values[resiterated] - radar.range.values[i] < R and resiterated < nz-1:
             resiterated+=1
         
         #count how many ranges are within R distance: (later used for quality flagging):
@@ -202,6 +204,15 @@ def get_diffgamma(R, inradar, outall=False):
         gamma1.append(1/(2*R) * np.log( radar.GZe.values[:,i]/radar.GZe.values[:,resiterated-1]))
         gamma2.append(1/(2*R) * np.log( radar.G2Ze.values[:,i]/radar.G2Ze.values[:,resiterated-1]))
         
+        #this one is the second term of Roy et al 2018 Eq (13)
+        #convert deltaZe (in dB) to linear mm6/m3 by dividing with 4.343 factor
+        sigmarhovterm2 =  np.sqrt( 
+            ((radar.deltaZe.values[:,i]/4.343) / radar.GZe.values[:,i] ) **2 + #deltaZe at r1 for 167
+            ((radar.deltaZe.values[:,i]/4.343) / radar.G2Ze.values[:,i] ) **2 + #assume same deltaZe for 174 at r1
+            ((radar.deltaZe.values[:,resiterated-1]/4.343) / radar.GZe.values[:,resiterated-1] ) **2 + #deltaZe at r2 for 167
+            ((radar.deltaZe.values[:,resiterated-1]/4.343) / radar.G2Ze.values[:,resiterated-1] ) **2 ) #assume same deltaZe for 174 at r2
+
+        deltaZerR.append(sigmarhovterm2)
     
     gamma1 = np.asarray(gamma1).T
     gamma2 = np.asarray(gamma2).T
@@ -209,5 +220,5 @@ def get_diffgamma(R, inradar, outall=False):
     diffgamma = gamma2 - gamma1
     
     #return swapped time and height dimensions
-    return diffgamma, nvolumes
+    return diffgamma, nvolumes, deltaZerR
 
