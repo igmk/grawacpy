@@ -24,7 +24,8 @@ def make_dataset(dsvars, attrs, outfile, withdar =True, write=False):
     'freq':(['nchirp'], np.broadcast_to(dsvars['freq'], dsvars['nchirps']), {'units':'GHz', 'long_name':'Radar transmitted frequency' }),
     'SNR':(['time','height'], dsvars['snr'], {'units':'dB', 'long_name':'Radar Signal-to-Noise Ratio calculated from noise floor' }),
     'SL':(['time','height'], dsvars['sl'], {'units':'mm6 m-3', 'long_name':'Sensitivity Limit of the measurement; threshold in radar software (multiple of STD of spectrally-resolved noise power)' }),
-    'deltaZe':(['time','height'], dsvars['deltaZe'], {'units':'dB', 'long_name':'Radar reflectivity precision calculated using Battaglia and Kollias (2019) Eqn (13)' })
+    'deltaZe':(['time','height'], dsvars['deltaZe'], {'units':'dB', 'long_name':'Radar reflectivity precision calculated using Battaglia and Kollias (2019) Eqn (13)' }),
+    'sw':(['time','height'], dsvars['sw'], {'units':'ms-1', 'long_name':'Spectral Width at 167.3 GHz' })
         }
     
     if withdar == True:
@@ -253,8 +254,8 @@ def read_compactfiles(indatafiles, inhkfiles, inspfiles, info, instrumentname, w
     print('creating dataset...')
 
     #create dataset:
-    exportvars = [Ze, vd, rheight, freq, navg, maxvel, time, nchirps, instrumentalt, chirpstartidx, snr, sl, deltaZe]
-    varnames = ['Ze', 'vd', 'rheight', 'freq', 'navg', 'maxvel', 'time', 'nchirps', 'instrumentalt', 'chirpstartidx', 'snr','sl', 'deltaZe']
+    exportvars = [Ze, vd, rheight, freq, navg, maxvel, time, nchirps, instrumentalt, chirpstartidx, snr, sl, deltaZe, sw]
+    varnames = ['Ze', 'vd', 'rheight', 'freq', 'navg', 'maxvel', 'time', 'nchirps', 'instrumentalt', 'chirpstartidx', 'snr','sl', 'deltaZe', 'sw']
     if withdar == True:
         exportvars.append(LDR)
         varnames.append('LDR')

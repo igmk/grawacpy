@@ -62,8 +62,8 @@ gspfiles = sorted(glob.glob(info['paths']['grawac']+'%s/%s/%s/'%(yyyy,mm,dd) + '
 #print(gdatafiles)
 
 #grawacl0data = importfct.read_rpg_lv1(gdatafiles, info, 'GRaWAC', instrumentaltinput = 15, withdar=True, write=True)
-grawacl1data = importfct.read_compactfiles(gdatafiles, ghkfiles, gspfiles, info, 'GRaWAC', withdar=True, write=False)
-
+grawacl1data = importfct.read_compactfiles(gdatafiles, ghkfiles, gspfiles, info, 'GRaWAC', withdar=True, write=True)
+1/0
 
 print('loading Wband files....')
 wdatafiles  = sorted(glob.glob(info['paths']['wband']+'%s/%s/%s/'%(yyyy,mm,dd) + 'joyrad94_nya_lv1a_%s%s%s*_%s.nc'%(yyyy, mm, dd, info['paths']['miracchirpprogram'])))
