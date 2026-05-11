@@ -34,17 +34,26 @@ def run(level2, att, info, write=False):
     level3a.DFR.attrs['units'] = 'dB'
     
     #convert time (level1 is in seconds since 1/1/1970) to datetime timestamp:
-    nt = level3a.time.shape[0]
-    level3a = level3a.assign_coords(time = np.array([dt.datetime.utcfromtimestamp(level3a.time.values[t]) for t in range(nt)], dtype=object))
+    #nt = level3a.time.shape[0]
+    #level3a = level3a.assign_coords(time = np.array([dt.datetime.utcfromtimestamp(level3a.time.values[t]) for t in range(nt)], dtype=object))
     
     #interpolate att onto radar time and height:
-    print('interpolating attenuation to radar time and height...')
-    attinter = att.Att_atmo.interp(time=level3a.time, height=level3a.height)
+    print('interpolating attenuation to radar time and height...and applying slant')
+    
+    attinter = att.interp(time=level3a.time, height=level3a.height)
+
+    #now apply slant factor:
+    slantfactor = np.cos(np.radians(level2.incangle))
+    attinter = attinter * 1/slantfactor
+    
+    attintercum = 2*attinter.Att_atmo[::-1].cumsum(dim='range')
+    attintercum = attinter.drop_vars('height')
+    
     
     #calculate attenuation corrected variables. (and rename the old ones first)
     
     for level3akey, attkey in [['W',94], ['G',167], ['G2',174]]:
-        level3a['%sZe_attcorr'%level3akey] = level3a['%sZe'%level3akey] + attinter.sel(freq=int(attkey), method='nearest')
+        level3a['%sZe_attcorr'%level3akey] = level3a['%sZe'%level3akey] + attintercum.Att_atmo.sel(freq=int(attkey), method='nearest')
     
     level3a = level3a.assign(DFR_attcorr = level3a.WZe_attcorr - level3a.GZe_attcorr)
     level3a.DFR_attcorr.attrs['units'] = 'dB'
@@ -64,7 +73,7 @@ def run(level2, att, info, write=False):
 
 
 
-def attenuation_correction(attfiles, geometry, slant, info, write=False):
+def attenuation_correction(l2data, attfiles, geometry, slant, info, write=False):
     '''
     gas attenuation function. provides 
     attfiles: files with calculated gas attenuation
@@ -81,28 +90,32 @@ def attenuation_correction(attfiles, geometry, slant, info, write=False):
     #cumulate depending on geometry:
     attcum = attrs.copy()
     
+    
     #convert launchtime coordinate to datetime:
     nt = attcum.launchtime.shape[0]
-    attcum = attcum.assign_coords(launchtime=np.asarray([dt.datetime.strptime(str(attrs.launchtime.values[t]), '%Y%m%d%H%M') for t in range(nt)],dtype=object))
-    
+    attcum = attcum.assign_coords(launchtime=np.asarray([dt.datetime.strptime(str(attrs.launchtime.values[t]), '%Y-%m-%dT%H:%M:%S') for t in range(nt)],dtype=object))
+    #attcum = attcum.assign_coords(launchtime=np.asarray([dt.datetime.strptime(str(attrs.launchtime.values[t]), '%Y%m%d%H%M') for t in range(nt)],dtype=object))
     #and rename the variable to time:
     attcum = attcum.rename({'launchtime':'time'})
     
+    '''
     if geometry == 'bu':
         attcum.Att_atmo.values = 2*attrs.Att_atmo.cumsum(dim='height').values
     
     elif geometry == 'td':
-        '''
+        
         for airborne configuration. 
         todo:
         - top-down accumulation
         - add fake attenuation profiles at beginning and end of flight to have attenuation correction for the whole flight.
         (by cloning first and last dropsonde)
-        '''
+        
+        
         print('top-down attenuation correction...')
         
         #duplicate first and last dropsonde for first/last radar timestamp:
-
+        print('TODO: duplicate first and last dropsonde for attenuation correction at beginning and end')
+        
         #account for slant factor:
         slantfactor = np.cos(np.radians(l2data.incangle))
         attcum.Att_atmo.values = attcum.Att_atmo.values*1/slantfactor
@@ -110,11 +123,11 @@ def attenuation_correction(attfiles, geometry, slant, info, write=False):
         #accumulate top-down. 
         attcum.Att_atmo.values = 2*attrs.Att_atmo[::-1].cumsum(dim='height').values
         
-        1/0
+        
     else:
         print('geometry not specified. returning.')
         return
-    
+    '''
     if write == True:
         attcum.to_netcdf(info['paths']['output']+'attenuation.nc')
     

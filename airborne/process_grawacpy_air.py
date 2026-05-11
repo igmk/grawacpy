@@ -110,8 +110,8 @@ attpath = info['paths']['attenuation']
 attfiles = sorted(glob.glob(attpath + '%s/%s/%s/%s_*_attenuation.nc'%(yyyy,mm,dd,info['global']['mission']))) #files with gas attenuation calculated for each sonde profile
 
 #check if attenuation profiles are available; if yes, read them and keep going; if no: run attenuation script to produce output
-#if len(attfiles) < 1:
-if 1 == 1:
+if len(attfiles) < 1:
+#if 1 == 1:
     from attenuation import get_attenuation_from_sondes as att
     att.run(info)
     #find files again, and check that they got saved.
@@ -123,7 +123,7 @@ if 1 == 1:
 geometry = 'td' #bu: bottom-up; td: top-down
 slant = True #False can be entered for zenith/nadir; otherwise, enter the angle / deg.
 
-att = l3a.attenuation_correction(attfiles, geometry, l2data, info, write=False)
+att = l3a.attenuation_correction(l2data, attfiles, geometry, l2data, info, write=False)
 
 l3adata = l3a.run(l2data, att, info, write=True)
 
