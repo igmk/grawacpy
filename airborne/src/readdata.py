@@ -23,8 +23,10 @@ def make_dataset(dsvars, attrs, outfile, withdar =True, write=False):
     'instrument_altitude': (['nchirp'], np.broadcast_to(dsvars['instrumentalt'], dsvars['nchirps']), {'units': 'm', 'long_name':'altitude msl of sensor. variable was added to range to obtain height variable. '}),
     'freq':(['nchirp'], np.broadcast_to(dsvars['freq'], dsvars['nchirps']), {'units':'GHz', 'long_name':'Radar transmitted frequency' }),
     'SNR':(['time','height'], dsvars['snr'], {'units':'dB', 'long_name':'Radar Signal-to-Noise Ratio calculated from noise floor' }),
-    'SL':(['time','height'], dsvars['sl'], {'units':'mm6 m-3', 'long_name':'Sensitivity Limit of the measurement; threshold in radar software (multiple of STD of spectrally-resolved noise power)' })
-        }
+    'SL':(['time','height'], dsvars['sl'], {'units':'mm6 m-3', 'long_name':'Sensitivity Limit of the measurement; threshold in radar software (multiple of STD of spectrally-resolved noise power)' }),
+    'deltaZe':(['time','height'], dsvars['deltaZe'], {'units':'dB', 'long_name':'Radar reflectivity precision calculated using Battaglia and Kollias (2019) Eqn (13)' }),
+    'sw':(['time','height'], dsvars['sw'], {'units':'ms-1', 'long_name':'Spectral Width at 167.3 GHz' })
+       }
     
     if withdar == True:
         data_vars['DAR'] = (['time','height'], dsvars['LDR'], {'units': 'dB', 'long_name':'Differential Absorption Radar Dual-Frequency Ratio'})
@@ -182,13 +184,15 @@ def read_compactfiles(indatafiles, inhkfiles, inspfiles, info, instrumentname, w
     rheight = indata.height.values #in compact files, stored height coordinate already includes instrumentaltitude
     freq = np.unique(indata.frequency.values)[0] #frequency measured
     sl = indata.noise_threshold.values #sensitivity limit given by radar software threshold
-    
+    sw = indata.sw.values #doppler spectral width in m/s
         
     #sampletms = np.unique(inhkdata.sample_tms.values, axis=0)[0]
     maxvel = np.unique(indata.nyquist_velocity.values, axis=0)[0] #returns array with nchirps entries
     
     instrumentalt = np.unique(indata.instrument_altitude)[0]
-    chirpstartidx = np.unique(indata.chirpseq_startix.values, axis=0)[0]
+    chirpstartidx = np.array(np.unique(indata.chirpseq_startix.values, axis=0)[0],dtype=int)
+    chirpendidx = chirpstartidx[1:]-1 #last index in whole range array of each chirp sequence
+    chirpendidx = np.array(np.append(chirpendidx, indata.time.shape[0]) , dtype=int)#append last index
     
     if withdar == True:
         #get LDR:
@@ -229,12 +233,28 @@ def read_compactfiles(indatafiles, inhkfiles, inspfiles, info, instrumentname, w
     print('concatenating...')
     meannoise = xr.concat(meannoise, dim='time')
     snr = srcfct.get_ZdBZ(Ze/srcfct.get_zlin(meannoise.values)) #signal-to-noise ratio in dB
+    snrlin = Ze/srcfct.get_zlin(meannoise.values) #signal-to-noise ration in linear units
+
+    #calculate Ze precision in dB:
+    c = 3*1e8 #speed of light in m/s
+    wvl = c / (freq*1e9) #variable freq is in GHz
+
+    prt = c / (4 * (freq*1e9) * maxvel) #pulse repetition time; vector of nchirp length
+
+    #loop through each chirp sequence as prt and navg is different for each sequence
+    ndeltaZe = []
+    for n in range(nchirps):
+        
+        coeff = wvl / (4 * np.sqrt(np.pi) * sw[:, chirpstartidx[n]:(chirpendidx[n]+1)] * prt[n])
+        ndeltaZe.append( 4.343 * 1/(np.sqrt(navg[n])) * np.sqrt(coeff + 2/snrlin[:, chirpstartidx[n]:(chirpendidx[n]+1)] + 2/(snrlin[:, chirpstartidx[n]:(chirpendidx[n]+1)]**2)) )  #Ze precision in dB following Battaglia and Kollias 2019 Eqn 8
     
+    #concatenate over nchirps:
+    deltaZe = np.concatenate(ndeltaZe, axis=1)
     print('creating dataset...')
 
     #create dataset:
-    exportvars = [Ze, vd, rheight, freq, navg, maxvel, time, nchirps, instrumentalt, chirpstartidx, snr, sl]
-    varnames = ['Ze', 'vd', 'rheight', 'freq', 'navg', 'maxvel', 'time', 'nchirps', 'instrumentalt', 'chirpstartidx', 'snr','sl']
+    exportvars = [Ze, vd, rheight, freq, navg, maxvel, time, nchirps, instrumentalt, chirpstartidx, snr, sl, deltaZe, sw]
+    varnames = ['Ze', 'vd', 'rheight', 'freq', 'navg', 'maxvel', 'time', 'nchirps', 'instrumentalt', 'chirpstartidx', 'snr','sl', 'deltaZe', 'sw']
     if withdar == True:
         exportvars.append(LDR)
         varnames.append('LDR')
