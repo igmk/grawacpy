@@ -23,7 +23,7 @@ def create_wv_dataset(dsvars, attrs):
     create xarray dataset from input variables, return xr dataset
     '''
     coords = {'time':(['time'], dsvars['time']),
-              'height':(['height'], dsvars['height'], {'units':'m', 'long_name':'Radar range gate height asl (radar range + instrument_altitude'}),
+              'range':(['range'], dsvars['range'], {'units':'m', 'long_name':'Radar range distance from aircraft'}),
               'R':(['R'], [dsvars['R']], {'units':'m', 'long_name':'retrieval vertical resolution'}),
               'tavg':(['tavg'], [dsvars['tavg']], {'units':'s', 'long_name':'retrieval averaging time'})
              }
@@ -178,7 +178,7 @@ def get_diffgamma(R, inradar, outall=False):
     gamma2 = []
     nvolumes = [] #number of radar volumes averaged to obtain R spacing
     deltaZerR = [] #variance term (second term) for rhov uncertainty calculation
-    nz = radar.height.shape[0]
+    nz = radar.range.shape[0]
     
     
     #check whether ze input is in dBZ; if yes, convert to linear units for dar calculations.
@@ -216,9 +216,110 @@ def get_diffgamma(R, inradar, outall=False):
     
     gamma1 = np.asarray(gamma1).T
     gamma2 = np.asarray(gamma2).T
-    
+    deltaZerR = np.asarray(deltaZerR).T
+
     diffgamma = gamma2 - gamma1
     
     #return swapped time and height dimensions
     return diffgamma, nvolumes, deltaZerR
 
+
+def calc_sigma0(Zmax, freq, theta, dr, Kw, Fbf):
+    '''
+    calculate normalized calibrated radar cross section sigma0 of ground return
+    input: 
+    - zmax: logarithmic Ze used to derive sigma0 from...could be maximum; or mean of all ground bins? [dBZe mm6/m3]
+    - freq: frequency in GHz of Ze measurement [GHz]
+    - theta: inclination angle off nadir [deg]
+    - dr: range resolution of ground return
+    - Kw: dielectric constant
+    - Fbf: 
+    '''
+    #convert Ze to linear units, ie mm6/m3
+    zlin = helpfct.get_zlin(Zmax)
+    
+    #calculate inclination angle in radians:
+    thetarad = np.radians(theta)
+    
+    #calculate wavelength: [m]
+    c = 3e08
+    wvl = c/(1e09*freq)
+    print('radar wvl: %.5f m'%wvl)
+    
+    #factor 1e-18 is there to calculate Zemax in m6/m3 (comes in mm6/m3)
+    sigma0 = 1e-18 * zlin * Kw**2 * np.pi**5 * np.cos(thetarad) * dr / (Fbf * wvl**4) 
+    
+    sigma0dB = helpfct.get_ZdBZ(sigma0)
+    
+    return sigma0dB
+
+
+
+def retrieve_iwv(Ze1, Ze2, freq1, freq2, zres, incangle, radaralt, radarrange, xrds, lut, kwargs, wvprof):
+    '''
+    retrieve column amount between radar and specific range (ie ground return (air); (or cloud top (air) ?); or cloud base (ground-based) )
+    
+    version 2.0:
+    - changed compared to v1.0 above as diffkappa is available from wvprof input
+    
+    input:
+    - Ze1
+    - Ze2
+    - freq1
+    - freq2
+    - zres
+    - incangle
+    - radaralt
+    - radarrange
+    - xrds
+    - lut
+    - kwargs
+    - wvprof
+    
+    '''
+    
+    if kwargs['groundsigma'] == 'max':
+        Zein1 = np.nanmax( Ze1.where((radaralt > kwargs['minalt']) & (radaralt < kwargs['maxalt'])),axis=1)
+        Zein2 = np.nanmax( Ze2.where((radaralt > kwargs['minalt']) & (radaralt < kwargs['maxalt'])),axis=1)
+    
+    
+    Kw = 0.86   #frequency and surface dependent!!!
+    Fbf = 1
+    
+    #get sigma0 in dB for each channel: 
+    sigma0f1 = calc_sigma0(Zein1, freq1, incangle, zres, Kw, Fbf)
+    sigma0f2 = calc_sigma0(Zein2, freq2, incangle, zres, Kw, Fbf)
+    
+    #calculate iwv
+    #diffkappa = 0.07 #v1.0
+    #assume diffkappa as a constant factor. (31.10.25). 
+    # #checked in differential kappa from LUT that temporal STD of diffkappa throughout RF05 is around 1.5 - 4.0 *10^-4. 
+    # Roy et al 2021 Eqn (9) and text below state that Delta Kappa can be taken as constant (independent of humidity profile) if kappa doesn't vary much between aircraft and ground.
+    # at time of dropsonde launch 11:16, delta kappa @100m is 0.1075; @ 3500m: 0.101
+    # thus, just assume diffkappa as 0.1 for RF05 for now.
+    
+    #diffkappa = 0.1 #v2.0; 
+
+    diffkappa = np.nanmean(wvprof.diffkappa.values)
+
+    print('found mean diffkappa for flight = %.2f'%diffkappa)
+    diffkappastd = np.nanstd(wvprof.diffkappa.values, axis=0) #temporal standard deviation throughout flight
+    print('max temporal STD of diffkappa throughout entire flight = %.5f'%np.nanmax(diffkappastd))
+    diffkappameanvertical = np.nanmean(wvprof.diffkappa.values[:,-25] - wvprof.diffkappa.values[:,25] ) #mean vertical difference between aircraft and ground level of diffkappa
+    diffkappastdvertical = np.nanstd(wvprof.diffkappa.values[:,-25] - wvprof.diffkappa.values[:,25] ) #vertical STD
+    print('mean vertical diffkappa difference = %.5f, and its STD = %.5f'%(diffkappameanvertical, diffkappastdvertical))
+    
+    #iwv = calc_iwv(incangle, diffkappa, sigma0f1, sigma0f2)
+    
+    thetarad = np.radians(incangle)
+    sigmaf1lin = helpfct.get_zlin(sigma0f1)
+    sigmaf2lin = helpfct.get_zlin(sigma0f2)
+    
+    iwv = np.cos(thetarad)/(2*diffkappa) * np.log(sigmaf1lin/sigmaf2lin)
+    
+    return iwv, diffkappa
+    
+
+
+
+    return iwv

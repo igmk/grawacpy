@@ -42,7 +42,9 @@ def run_retrieval_air(radar, thermo, lut, info, write=False):
     thermoradar = allds.interp(height=radar.height, time=radar.time)
     
     print('WV retrieval...calculating kappa')    
+    
     #get differential kappa from LUT based on thermo set of temperature and pressure, output unit: kg m**-2
+    ## important assumption here: T and p profile does not vary much between slant and nadir path.
     diffkappa = wvfct.get_kappa_from_lut(thermoradar.temp, thermoradar.pres, lut)
     
     print('preparing Ze and DAR with quality control')
@@ -55,7 +57,8 @@ def run_retrieval_air(radar, thermo, lut, info, write=False):
 
     #loop through different R, calculate output profile and save output
     for R in np.asarray([info['watervaporsettings']['R']],dtype=int):
-        print('WV retrieval...calculating gamma and retrieving with R=%i'%R)
+        print('WV retrieval...calculating gamma along range dimension and retrieving with R=%i'%R)
+        
         #get differential gamma calculated based on reflectivities, output unit: 1/m; also get number of averaged volumes per height level
         diffgamma, nvolumes, deltaZerR = wvfct.get_diffgamma(R, radar, outall=False)
         
@@ -65,12 +68,10 @@ def run_retrieval_air(radar, thermo, lut, info, write=False):
         #calculate rhov uncertainty according to Battaglia and Kollias 2019 Eq 7; Roy et al 2018 Eqn 13
         deltarhov = 1/(2 * R * diffkappa) * deltaZerR * 1000. #convert to g m-3
         
-
-        
         #prepare variables to be stored in dataset:
         tavg = int(info['watervaporsettings']['tavg'].split('s')[0])
-        exportvars = [diffkappa, diffgamma, nvolumes, wvprof, R, radar.time.values, radar.height.values, deltarhov, tavg]
-        varnames = ['diffkappa', 'diffgamma', 'nranges', 'rhov', 'R', 'time', 'height', 'deltarhov','tavg']
+        exportvars = [diffkappa, diffgamma, nvolumes, wvprof, R, radar.time.values, radar.range.values, deltarhov, tavg]
+        varnames = ['diffkappa', 'diffgamma', 'nranges', 'rhov', 'R', 'time', 'range', 'deltarhov','tavg']
         tods = {}
         for vv,var in enumerate(exportvars):
             tods[varnames[vv]] = var
@@ -90,11 +91,31 @@ def run_retrieval_air(radar, thermo, lut, info, write=False):
         print('smoothing output vertically on R=%i by using rolling mean'%R)
         wvsmoothed = wvxrdssmooth.rhov.rolling( height= int( info['watervaporsettings']['Nrolling']), min_periods = int(info['watervaporsettings']['minNranges'])).mean()
         wvxrdssmooth.rhov.values = wvsmoothed.values
-        
+
+        #project profiles on nadir:
+        slantfactor = np.cos(np.radians(radar.incangle.interp(time=wvxrdssmooth.time)))
+        slantmatrix = np.broadcast_to(slantfactor, (wvxrdssmooth.rhov.shape[1], len(slantfactor))).T
+        wvprofnadir = slantmatrix * wvxrdssmooth.rhov
+
         #print('interpolating smoothing output to regular grid with R')
         #Rgrid = np.arange(0, 11000, R)
         #wvxrdssmooth = wvxrdssmooth.interp( height = Rgrid)
         
+        ## now retrieve IWV
+        kwargs = {}
+        kwargs['groundsigma'] = 'max'        # max means: maximum Ze within specified altitude bins is used; mean means: mean is calculated
+        #specify min and max alt used for calculating Ze used for retrieving iwv from
+        kwargs['minalt'] = -300    
+        kwargs['maxalt'] = 300  
+        kwargs['option'] = 'sounding'
+        
+        zres = np.unique(np.diff(radar.range))[-1]
+        freq1 = 167.3
+        freq2 = 174.7
+        iwv, diffkappaiwv = wvfct.retrieve_iwv(radar.GZe, radar.G2Ze, freq1, freq2, zres, radar.incangle, radar.height, radar.range, allds, lut, kwargs, wvxrds)
+
+        wvxrds = wvxrds.assign(iwv=iwv)
+        wvxrdssmooth = wvxrdssmooth.assign(iwv=iwv.interp(time=wvxrdssmooth.time))
 
         #store to netcdf
         if write==True:
