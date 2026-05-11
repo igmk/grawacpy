@@ -1,8 +1,14 @@
 import numpy as np
 import datetime as dt
 import xarray as xr
-
+from scipy import interpolate as interp
 from src import helpfunctions as helpfct
+
+import importlib as imp
+from src import thermo_conversion as tc
+imp.reload(tc)
+
+import metpy.calc as mpy 
 
 def val2idx(c, value):
     
@@ -35,6 +41,80 @@ def create_wv_dataset(dsvars, attrs):
     xrds = xr.Dataset(data_vars, coords, attrs)
     
     return xrds
+
+def interpolate_sounding_to_radarheight(sondexr, gheight):
+    '''
+    interpolate sounding temperature, relative humidity and pressure to given height array
+    input:
+    - sondexr: xr dataset of sounding
+    - gheight: height array [m] that sounding variables will be interpolated onto
+    output:
+    - sondeinter: dictionnary with interpolated tdry, rh, pres on hgt
+    '''
+    sondeinter = {}
+    for key in ['tdry', 'rh', 'pres']:
+        try:
+            fctinter = interp.interp1d(sondexr['gpsalt'], sondexr[key])
+            sondeinter[key] = fctinter(gheight)
+        except ValueError:
+            nansinkey = np.isnan(sondexr[key]) #get all nans in the array
+            1/0
+            
+    sondeinter['hgt'] = gheight
+    return sondeinter
+
+def get_all_soundings(sondefiles, newalt):
+    '''
+    load and read all dropsondefiles, interpolate to regular grid newalt
+    input: 
+    - sondefiles: filenames including full path for dropsonde data
+    - newalt: altitude vector that dropsonde profiles will be interpolated onto
+    output:
+    - xrds: xr dataset with sonde profiles
+    '''
+    
+    
+    nsondes = len(sondefiles)
+    nz = len(newalt)
+    
+    #load each sounding profile; interpolate to regular grid of 10m; save
+    allt = np.ones((nsondes, nz))
+    allp = np.ones((nsondes, nz))
+    allrhov = np.ones((nsondes, nz))
+    dstimes = []
+    dsiwv = []
+
+    #from each sounding: get T and p profile, interpolate to common grid, copy to 2d array
+    for n in range(nsondes):
+        #print(n)
+        dsdata = xr.open_dataset(sondefiles[n])
+        
+        #skip broken ones for RF05:
+        #if n == 0 or n==4:
+        #    dstimes.append(dsdata.launch_time.values)
+        #    continue# or n==3 or n==4 or n==5: continue
+        
+        print('.....TODO: code workaround for interpolation routine: adjust interpolation boundaries such that valid interpolation possible, then fill rest up with nans')
+        
+        dsinter = interpolate_sounding_to_radarheight(dsdata, newalt)
+        allt[n, :] = dsinter['tdry'] + 273.15
+        allp[n, :] = dsinter['pres'] 
+        allrhov[n, :] = tc.rh_to_qabs(dsinter['rh'], dsinter['tdry']+273.15)*1000.
+        dstimes.append(dsdata.launch_time.values)  #also extract launch time as datetime object
+        
+        #get sounding iwv:
+        pw = mpy.precipitable_water(dsdata.pres, dsdata.dp).magnitude
+        dsiwv.append(pw)
+
+    dstimes = np.array(dstimes)
+
+    #now put all T and pressure profiles from the different soundings into a xr dataset:
+    data_vars = {'temp':(['time', 'height'], allt), 'pres':(['time', 'height'], allp), 'rhov':(['time', 'height'], allrhov), 'iwv':(['time'], dsiwv)}
+    coords = {'time':(['time'], dstimes), 'height':(['height'], newalt)}
+    xrds = xr.Dataset(data_vars, coords)
+
+    return xrds
+
 
 
 def get_kappa_from_lut(temp, press, lut):

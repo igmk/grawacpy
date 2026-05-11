@@ -129,11 +129,12 @@ l3adata = l3a.run(l2data, att, info, write=True)
 
 # ===================================================== Level - 3b: water vapor retrieval
 print('Level-3....water vapor retrieval')
-thermo = xr.open_dataset(info['paths']['thermo'])
+#thermo = xr.open_dataset(info['paths']['thermo'])
+thermo = info['paths']['thermo'] + '%s_%s%s%s_%s/'%(info['global']['mission'],yyyy,mm,dd, info['global']['RF'] )
 lut = xr.open_dataset(info['paths']['lut'])
 
 print('retrieving water vapor...')
-wvorig, wvsmooth = wv.run_retrieval_ground(l3adata, thermo, lut, info, write=True)  #returns wv as initial output, and as smoothed output
+wvorig, wvsmooth = wv.run_retrieval_air(l3adata, thermo, lut, info, write=True)  #returns wv as initial output, and as smoothed output
 
 # quicklooks
 print('creating quicklooks...')
