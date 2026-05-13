@@ -1,0 +1,37 @@
+{ 
+    "global":
+    {"mission":"HAMAG",
+    "platform":"POLAR6",
+    "RF":"RF06",
+     "yyyy":"2024",
+     "mm":"02",
+     "dd":"19",
+     "allday":"1",
+     "hour":"18",
+     "version":"v1.0",
+     "quicklooks":0
+    },
+    "paths":
+ { "wband":"/your/path/to/wband/",
+   "grawac":"/your/path/to/gband/",
+   "attenuation":"/your/patht/to/attenuation/files/",
+   "lut":"/your/path/to/lut/lut.nc",
+   "thermo":"/your/path/to/dropsondes/",
+   "gps":"/your/path/to/gps/",
+   "era":"/your/path/to/era/",
+   "miracchirpprogram":"P03",
+   "grawacchirpprogram":"P01",
+   "output":"/your/outputpath/data/",
+   "quicklooks":"/your/outputpath/quicklooks/"
+   },
+   "watervaporsettings":
+{   "R":"200",
+    "tavg":"20",
+    "minNranges":"3",
+    "Nrolling":"6",
+    "SNRthresh":"1"
+   },
+   "level2settings":
+{   "mode":["average", "average", "average", "nearest"]
+}
+}
