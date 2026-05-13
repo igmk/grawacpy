@@ -31,7 +31,7 @@ def run_retrieval_air(radar, thermo, lut, info, write=False):
     
     sondefiles = np.array(sorted(glob.glob(thermo+'*_??????QC.nc')))
     #skip broken ones for RF05:
-    sondefiles = sondefiles[np.array([1,2,3])] #skip numbers 0 and 4
+    #sondefiles = sondefiles[np.array([1,2,3])] #skip numbers 0 and 4
     
     #new altitudes:
     newalt = np.arange(10,2800, 5)
@@ -70,8 +70,8 @@ def run_retrieval_air(radar, thermo, lut, info, write=False):
         
         #prepare variables to be stored in dataset:
         tavg = int(info['watervaporsettings']['tavg'].split('s')[0])
-        exportvars = [diffkappa, diffgamma, nvolumes, wvprof, R, radar.time.values, radar.range.values, deltarhov, tavg]
-        varnames = ['diffkappa', 'diffgamma', 'nranges', 'rhov', 'R', 'time', 'range', 'deltarhov','tavg']
+        exportvars = [diffkappa, diffgamma, nvolumes, wvprof, R, radar.time.values, radar.range.values, deltarhov, tavg, radar.height.values]
+        varnames = ['diffkappa', 'diffgamma', 'nranges', 'rhov', 'R', 'time', 'range', 'deltarhov','tavg', 'height']
         tods = {}
         for vv,var in enumerate(exportvars):
             tods[varnames[vv]] = var
@@ -89,7 +89,7 @@ def run_retrieval_air(radar, thermo, lut, info, write=False):
         wvxrdssmooth = wvxrds.resample(time='%s'%info['watervaporsettings']['tavg'],closed='right').mean() #put timestamp at end of averaging period to be consistent with radar time stamping (rpg puts timestamp at end of one measurement)
         
         print('smoothing output vertically on R=%i by using rolling mean'%R)
-        wvsmoothed = wvxrdssmooth.rhov.rolling( height= int( info['watervaporsettings']['Nrolling']), min_periods = int(info['watervaporsettings']['minNranges'])).mean()
+        wvsmoothed = wvxrdssmooth.rhov.rolling( range = int( info['watervaporsettings']['Nrolling']), min_periods = int(info['watervaporsettings']['minNranges'])).mean()
         wvxrdssmooth.rhov.values = wvsmoothed.values
 
         #project profiles on nadir:
@@ -115,7 +115,7 @@ def run_retrieval_air(radar, thermo, lut, info, write=False):
         iwv, diffkappaiwv = wvfct.retrieve_iwv(radar.GZe, radar.G2Ze, freq1, freq2, zres, radar.incangle, radar.height, radar.range, allds, lut, kwargs, wvxrds)
 
         wvxrds = wvxrds.assign(iwv=iwv)
-        wvxrdssmooth = wvxrdssmooth.assign(iwv=iwv.interp(time=wvxrdssmooth.time))
+        wvxrdssmooth = wvxrdssmooth.assign(iwv=iwv.interp(time=wvxrdssmooth.time), wvprofnadir=wvprofnadir)
 
         #store to netcdf
         if write==True:

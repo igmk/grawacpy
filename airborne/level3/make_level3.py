@@ -85,8 +85,35 @@ def attenuation_correction(l2data, attfiles, geometry, slant, info, write=False)
     '''
     
     #open attenuation profiles
-    attrs = xr.open_mfdataset(attfiles) #dataset with attenuation profiles for each sounding+freq, on arb height
-    
+    try:
+        attrs = xr.open_mfdataset(attfiles) #dataset with attenuation profiles for each sounding+freq, on arb height
+    except ValueError:
+        nfiles = len(attfiles)
+        allatt = []
+        for j in range(nfiles):
+            #open single file
+            attds = xr.open_dataset(attfiles[j])
+            #add launchtime as coordinate and dimension
+            launchtime = attds.attrs['sonde_launch_time']
+            
+            coords = {
+                'freq':(['freq'], attds.freq.values, {'units':'GHz', 'long_name':'simulated radar frequency'}),
+                'height':(['height'], attds.height.values, {'units':'m', 'long_name':'layer height above msl'}),
+                'launchtime':(['launchtime'], [launchtime], {'units':'UTC', 'long_name':'sonde launch time UTC'})}
+            
+            data_vars = {
+                'Att_atmo':(['launchtime','height','freq'], np.expand_dims(attds.Att_atmo.values,axis=0), {'units':'dB', 'long_name': 'atmospheric attenuation profile'}),
+                'relh':(['height'], attds.relh.values, {'units':'%', 'long_name':'layer relative humidity'}),
+                'p':(['height'], attds.p.values, {'units':'hPa', 'long_name':'layer pressure'}),
+                'temp':(['height'], attds.temp.values, {'units':'K', 'long_name':'layer temperature'})
+            }
+            attrs={}
+            
+            attdslaunch = xr.Dataset(data_vars, coords, attrs)
+            #append to list with single ds
+            allatt.append(attdslaunch)
+            
+        attrs = xr.concat(allatt, dim='launchtime')
     #cumulate depending on geometry:
     attcum = attrs.copy()
     

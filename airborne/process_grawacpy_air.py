@@ -34,7 +34,7 @@ if len(sys.argv) > 1:
     tt = sys.argv[6] #tavg
     
 else: #specify through info json file:
-    with open("./config_hamag.json") as json_file:
+    with open("./config_hamag_rf06.json") as json_file:
         info = json.load(json_file)
     yyyy = info['global']['yyyy']
     mm = info['global']['mm']
@@ -125,7 +125,7 @@ slant = True #False can be entered for zenith/nadir; otherwise, enter the angle 
 
 att = l3a.attenuation_correction(l2data, attfiles, geometry, l2data, info, write=False)
 
-l3adata = l3a.run(l2data, att, info, write=True)
+l3adata = l3a.run(l2data, att, info, write=False)
 
 # ===================================================== Level - 3b: water vapor retrieval
 print('Level-3....water vapor retrieval')

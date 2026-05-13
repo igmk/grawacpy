@@ -30,13 +30,14 @@ def create_wv_dataset(dsvars, attrs):
     
     #datavars to include: ze, ldr, startidx, freq, 
     data_vars = { 
-    'rhov' : (['time','height'], dsvars['rhov'], {'units': 'g m-3', 'long_name':'absolute humidity profile retrieved from DAR measurements'}),
-    'diffkappa' : (['time','height'], dsvars['diffkappa'], {'units': 'mm6 m-3', 'long_name':'radar reflectivity Ze'}),
-    'diffgamma' : (['time','height'], dsvars['diffgamma'], {'units': 'm s-1', 'long_name':'radar mean Doppler Velocity'}),
-    'deltarhov' : (['time','height'], dsvars['deltarhov'], {'units': 'g m-3', 'long_name':'rhov uncertainty'}),
-    'nranges' : (['height'], dsvars['nranges'], {'units': '-', 'long_name':'number of range bins that fit into R spacing'})
-        }
-    
+    'rhov' : (['time','range'], dsvars['rhov'], {'units': 'g m-3', 'long_name':'absolute humidity profile retrieved from DAR measurements along slanted path'}),
+    'diffkappa' : (['time','range'], dsvars['diffkappa'], {'units': 'mm6 m-3', 'long_name':'radar reflectivity Ze'}),
+    'diffgamma' : (['time','range'], dsvars['diffgamma'], {'units': 'm s-1', 'long_name':'radar mean Doppler Velocity'}),
+    'deltarhov' : (['time','range'], dsvars['deltarhov'], {'units': 'g m-3', 'long_name':'rhov uncertainty'}),
+    'nranges' : (['range'], dsvars['nranges'], {'units': '-', 'long_name':'number of range bins that fit into R spacing'}),
+    'height' : (['time','range'], dsvars['height'], {'units': 'm asl', 'long_name':'Altitude asl for each radar range bin.'}),
+    }
+
     attrs['title'] = 'Water vapor retrieval output GRaWAC'
     attrs['creation_time'] = dt.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')
     
