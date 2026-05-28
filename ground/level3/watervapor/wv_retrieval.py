@@ -1,7 +1,7 @@
 import numpy as np
 import xarray as xr
 import datetime as dt
-
+import os
 from level3.watervapor.src import wvfcts as wvfct
 import importlib as imp
 imp.reload(wvfct)
@@ -86,13 +86,16 @@ def run_retrieval_ground(radar, thermo, lut, info, write=False):
         #store to netcdf
         if write==True:
             
+            #check if output directory is there already; if not: make one
+            outputdir = info['paths']['output'] + 'l3/%s/%s/'%(info['yyyy'], info['mm'])
+            
             #output of original profiles:
             ncfile = info['global']['mission'] +'_%s_level3b_watervapor_%s%s%s_R%i_tavg%s_original.nc'%(info['global']['version'], info['yyyy'], info['mm'], info['dd'], R, info['watervaporsettings']['tavg'])
-            wvxrds.to_netcdf(info['paths']['output'] + ncfile)
+            wvxrds.to_netcdf(outputdir + ncfile)
             
             #output of smoothed profiles:
             ncfile = info['global']['mission'] +'_%s_level3b_watervapor_%s%s%s_R%i_tavg%s.nc'%(info['global']['version'], info['yyyy'], info['mm'], info['dd'], R, info['watervaporsettings']['tavg'])
-            wvxrdssmooth.to_netcdf(info['paths']['output'] + ncfile)
+            wvxrdssmooth.to_netcdf(info['paths']['output'] + 'l3/2025/02/' + ncfile)
             
         
     return wvxrds, wvxrdssmooth

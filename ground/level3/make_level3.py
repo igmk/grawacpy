@@ -2,7 +2,7 @@ import xarray as xr
 import numpy as np
 import datetime as dt
 import json
-
+import os
 from level3.src import level3_functions as fct
 from src import helpfunctions as helpfct
 
@@ -56,8 +56,11 @@ def run(level2, att, info, write=False):
     level3a.attrs['product-id'] = 'Level-3a'
     
     if write==True:
+        #check if output directory is there already; if not: make one
+        outputdir = info['paths']['output'] + 'l3/%s/%s/'%(info['yyyy'], info['mm'])
+        
         ncfile = info['global']['mission'] +'_%s_level3a_draco_%s%s%s.nc'%(info['global']['version'], info['yyyy'], info['mm'], info['dd'])
-        level3a.to_netcdf(info['paths']['output'] + ncfile)
+        level3a.to_netcdf(outputdir + ncfile)
     
     return level3a
 

@@ -2,6 +2,7 @@ import numpy as np
 import datetime as dt
 import xarray as xr
 from scipy.spatial import cKDTree
+import os
 
 def calculate_chirp_repetition_time(nyqvel, freq):
     '''
@@ -397,8 +398,12 @@ def create_dataset(wgtimematch, wdata, gdata, info, write=False):
     l2 = xr.Dataset(data_vars, coords, attrs)
     
     if write==True:
+        #check if output directory is there already; if not: make one
+        outputdir = info['paths']['output'] + 'l2/%s/%s/'%(info['yyyy'], info['mm'])
+        
         ncfile = info['global']['mission'] +'_%s_level2_draco_%s%s%s.nc'%(info['global']['version'], info['yyyy'], info['mm'], info['dd'])
-        l2.to_netcdf(info['paths']['output'] + ncfile)
+        
+        l2.to_netcdf(outputdir + ncfile)
     return l2
 
 

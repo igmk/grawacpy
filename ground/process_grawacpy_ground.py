@@ -5,7 +5,7 @@ processing routine to run ground-based processor
 import glob
 import sys
 import xarray as xr
-
+import os
 #import all submodules
 from level2 import make_level2 as l2
 from level3 import make_level3 as l3a
@@ -50,6 +50,19 @@ info['dd'] = dd
 info['watervaporsettings']['R'] = rr
 info['watervaporsettings']['tavg'] = '%ss'%tt
 
+# create output directories for later:
+print('creating output directories...')
+for l in ['l1', 'l2', 'l3']:
+    outputdir = info['paths']['output'] + '%s/'%l
+    if not os.path.isdir(outputdir):
+        os.mkdir(outputdir)
+    outputdir = info['paths']['output'] + '%s/%s/'%(l, info['yyyy'])
+    if not os.path.isdir(outputdir):
+        os.mkdir(outputdir)
+    outputdir = info['paths']['output'] + '%s/%s/%s/'%(l, info['yyyy'], info['mm'])
+    if not os.path.isdir(outputdir):
+        os.mkdir(outputdir)
+    
 # ===================================================== Level - 1: read matlab output
 print('processing %s, %s%s%s with water vapor retrieval on R=%sm and tavg=%s'%(info['global']['mission'], yyyy, mm, dd, info['watervaporsettings']['R'], info['watervaporsettings']['tavg']))
 
@@ -63,7 +76,7 @@ gspfiles = sorted(glob.glob(info['paths']['grawac']+'%s/%s/%s/'%(yyyy,mm,dd) + '
 
 #grawacl0data = importfct.read_rpg_lv1(gdatafiles, info, 'GRaWAC', instrumentaltinput = 15, withdar=True, write=True)
 grawacl1data = importfct.read_compactfiles(gdatafiles, ghkfiles, gspfiles, info, 'GRaWAC', withdar=True, write=True)
-1/0
+
 
 print('loading Wband files....')
 wdatafiles  = sorted(glob.glob(info['paths']['wband']+'%s/%s/%s/'%(yyyy,mm,dd) + 'joyrad94_nya_lv1a_%s%s%s*_%s.nc'%(yyyy, mm, dd, info['paths']['miracchirpprogram'])))

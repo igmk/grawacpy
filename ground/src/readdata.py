@@ -2,7 +2,7 @@ import xarray as xr
 import numpy as np
 import datetime as dt
 from src import helpfunctions as srcfct
-
+import os
 def make_dataset(dsvars, attrs, outfile, withdar =True, write=False):
     
     #create xarray dataset with input data: ===============================
@@ -137,7 +137,7 @@ def read_rpg_lv1(infiles, info, instrumentname, instrumentaltinput=True, withdar
         tods[varnames[vv]] = var
     
     attrs = {'title':'radar data read from RPG LV1.NC output'}
-    outfile = info['paths']['output'] + info['global']['mission'] +'_%s_level0_%s_%s%s%s.nc'%(info['global']['version'], instrumentname, info['yyyy'], info['mm'], info['dd'])
+    outfile = info['paths']['output'] + info['global']['mission'] +'_%s_level1_%s_%s%s%s.nc'%(info['global']['version'], instrumentname, info['yyyy'], info['mm'], info['dd'])
     
     xrds = make_dataset(tods, attrs, outfile, withdar=withdar, write=write)
     
@@ -271,7 +271,11 @@ def read_compactfiles(indatafiles, inhkfiles, inspfiles, info, instrumentname, w
         tods[varnames[vv]] = var
     
     attrs = {'title':'radar data read from compact files output produced by matlab processing'}
-    outfile = info['paths']['output'] + info['global']['mission'] +'_%s_level0_%s_%s%s%s.nc'%(info['global']['version'], instrumentname, info['yyyy'], info['mm'], info['dd'])
+    
+    #check if output directory is there already; if not: make one
+    outputdir = info['paths']['output'] + 'l1/%s/%s/'%(info['yyyy'], info['mm'])
+    
+    outfile = outputdir + info['global']['mission'] +'_%s_level1_%s_%s%s%s.nc'%(info['global']['version'], instrumentname, info['yyyy'], info['mm'], info['dd'])
     
     xrds = make_dataset(tods, attrs, outfile, withdar=withdar, write=write )
     
