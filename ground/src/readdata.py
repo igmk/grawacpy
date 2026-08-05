@@ -246,7 +246,7 @@ def read_compactfiles(indatafiles, inhkfiles, inspfiles, info, instrumentname, w
     for n in range(nchirps):
         
         coeff = wvl / (4 * np.sqrt(np.pi) * sw[:, chirpstartidx[n]:(chirpendidx[n]+1)] * prt[n])
-        ndeltaZe.append( 4.343 * 1/(np.sqrt(navg[n])) * np.sqrt(coeff + 2/snrlin[:, chirpstartidx[n]:(chirpendidx[n]+1)] + 2/(snrlin[:, chirpstartidx[n]:(chirpendidx[n]+1)]**2)) )  #Ze precision in dB following Battaglia and Kollias 2019 Eqn 8
+        ndeltaZe.append( 4.343 * 1/(np.sqrt(navg[n])) * np.sqrt(coeff + 2/snrlin[:, chirpstartidx[n]:(chirpendidx[n]+1)] + 1/(snrlin[:, chirpstartidx[n]:(chirpendidx[n]+1)]**2)) )  #Ze precision in dB following Battaglia and Kollias 2019 Eqn 8
     
     #concatenate over nchirps:
     deltaZe = np.concatenate(ndeltaZe, axis=1)
