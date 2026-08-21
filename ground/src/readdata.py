@@ -224,16 +224,24 @@ def read_compactfiles(indatafiles, inhkfiles, inspfiles, info, instrumentname, w
     #and spectra files:
     print('...reading spectra')
     
-    meannoise = []
+    meannoise = [] #mean noise floor per spectral bin
+    dopplen = [] #number of spectral bins in spectrum
     for ii,inspfile in enumerate(inspfiles):
         #print('reading spectra file %i '%ii)
         inspdata = xr.open_dataset(inspfile)
         meannoise.append(inspdata.mean_noise) 
+        dopplen.append(inspdata.spec_length)
         inspdata.close()
     print('concatenating...')
-    meannoise = xr.concat(meannoise, dim='time')
-    snr = srcfct.get_ZdBZ(Ze/srcfct.get_zlin(meannoise.values)) #signal-to-noise ratio in dB
-    snrlin = Ze/srcfct.get_zlin(meannoise.values) #signal-to-noise ration in linear units
+    meannoise = xr.concat(meannoise, dim='time') #matlab processing mean noise is normed per spectral bin
+    dopplen = xr.concat(dopplen, dim='time')
+    
+    #now calculate meannoise integrated over entire spectrum:
+    if len(np.unique(dopplen.values)) == 1: #if same amount of doppler bins per spectrum in each chirp
+        meannoise *= dopplen[0] #calculate mean noise integrated over entire spectrum
+
+    snr = srcfct.get_ZdBZ(Ze/(srcfct.get_zlin(meannoise.values))) #signal-to-noise ratio in dB
+    snrlin = Ze/(srcfct.get_zlin(meannoise.values)) #signal-to-noise ration in linear units
 
     #calculate Ze precision in dB:
     c = 3*1e8 #speed of light in m/s
