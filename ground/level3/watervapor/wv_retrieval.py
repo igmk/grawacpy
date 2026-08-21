@@ -50,8 +50,10 @@ def run_retrieval_ground(radar, thermo, lut, info, write=False):
         wvprof = np.divide(diffgamma, diffkappa)*1000.  #diffgamma units: 1/m ; diffkappa: m**2 kg**-1 ; wvprof: g m**(-3)
         
         #calculate rhov uncertainty according to Battaglia and Kollias 2019 Eq 7; Roy et al 2018 Eqn 13
-        deltarhov = 1/(2 * R * diffkappa) * deltaZerR * 1000. #convert to g m-3
+        #deltarhov = 1/(2 * R * diffkappa) * deltaZerR * 1000. #convert to g m-3
         
+        #new with bugs fixed 2nd revision
+        deltarhov = 1/(2 * R * diffkappa) * 1/4.343 * deltaZerR * 1000. #convert to gm-3
 
         
         #prepare variables to be stored in dataset:

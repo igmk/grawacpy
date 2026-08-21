@@ -25,7 +25,7 @@ def create_wv_dataset(dsvars, attrs):
     #datavars to include: ze, ldr, startidx, freq, 
     data_vars = { 
     'rhov' : (['time','height'], dsvars['rhov'], {'units': 'g m-3', 'long_name':'absolute humidity profile retrieved from DAR measurements'}),
-    'diffkappa' : (['time','height'], dsvars['diffkappa'], {'units': 'mm6 m-3', 'long_name':'radar reflectivity Ze'}),
+    'diffkappa' : (['time','height'], dsvars['diffkappa'], {'units': 'kg m^-2', 'long_name':'differential mass extincition coefficient'}),
     'diffgamma' : (['time','height'], dsvars['diffgamma'], {'units': 'm s-1', 'long_name':'radar mean Doppler Velocity'}),
     'deltarhov' : (['time','height'], dsvars['deltarhov'], {'units': 'g m-3', 'long_name':'rhov uncertainty'}),
     'nranges' : (['height'], dsvars['nranges'], {'units': '-', 'long_name':'number of range bins that fit into R spacing'})
@@ -140,13 +140,19 @@ def get_diffgamma(R, inradar, outall=False):
         #    ((radar.deltaZe.values[:,resiterated-1]/4.343) / radar.GZe.values[:,resiterated-1] ) **2 + #deltaZe at r2 for 167
         #    ((radar.deltaZe.values[:,resiterated-1]/4.343) / radar.G2Ze.values[:,resiterated-1] ) **2 ) #assume same deltaZe for 174 at r2
         #========
-        deltaZelin = helpfct.get_zlin(radar.deltaZe.values)
+
+        # ===== used in first revision =====
+        #deltaZelin = helpfct.get_zlin(radar.deltaZe.values)
         #now both deltaZe and radar.Ze should be in linear units.
-        sigmarhovterm2 =  np.sqrt( 
-            ((deltaZelin[:,i]) / radar.GZe.values[:,i] ) **2 + #deltaZe at r1 for 167
-            ((deltaZelin[:,i]) / radar.G2Ze.values[:,i] ) **2 + #assume same deltaZe for 174 at r1
-            ((deltaZelin[:,resiterated-1]) / radar.GZe.values[:,resiterated-1] ) **2 + #deltaZe at r2 for 167
-            ((deltaZelin[:,resiterated-1]) / radar.G2Ze.values[:,resiterated-1] ) **2 ) #assume same deltaZe for 174 at r2
+        #sigmarhovterm2 =  np.sqrt( 
+        #    ((deltaZelin[:,i]) / radar.GZe.values[:,i] ) **2 + #deltaZe at r1 for 167
+        #    ((deltaZelin[:,i]) / radar.G2Ze.values[:,i] ) **2 + #assume same deltaZe for 174 at r1
+        #    ((deltaZelin[:,resiterated-1]) / radar.GZe.values[:,resiterated-1] ) **2 + #deltaZe at r2 for 167
+        #    ((deltaZelin[:,resiterated-1]) / radar.G2Ze.values[:,resiterated-1] ) **2 ) #assume same deltaZe for 174 at r2
+        
+        # ==== used for second revivsion =====
+        sigmarhovterm2 = np.sqrt( 2*radar.deltaZe.values[:,i]**2 + 2*radar.deltaZe.values[:,resiterated]**2  )
+        
         deltaZerR.append(sigmarhovterm2)
         
     gamma1 = np.asarray(gamma1).T
